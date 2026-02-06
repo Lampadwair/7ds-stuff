@@ -13,12 +13,12 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 # === DONNÉES 7DS ===
 GEAR_DATA = {
-    "ceinture": {"ssr": 12400, "r": 5400, "type": "HP", "emoji": "🥋<:ceinture:1469423030005530665> ", "style": discord.ButtonStyle.primary},
-    "orbe":     {"ssr": 5800,  "r": 2900, "type": "HP", "emoji": "🔮<:orbe:1469423072665665596> ", "style": discord.ButtonStyle.primary},
+    "ceinture": {"ssr": 12400, "r": 5400, "type": "HP", "emoji": "🥋", "style": discord.ButtonStyle.primary},
+    "orbe":     {"ssr": 5800,  "r": 2900, "type": "HP", "emoji": "🔮", "style": discord.ButtonStyle.primary},
     "bracelet": {"ssr": 1240,  "r": 540,  "type": "ATK", "emoji": "🥊", "style": discord.ButtonStyle.danger},
     "bague":    {"ssr": 640,   "r": 290,  "type": "ATK", "emoji": "💍", "style": discord.ButtonStyle.danger},
-    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿<:collier:1469422499405234338> ", "style": discord.ButtonStyle.success},
-    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂<:boucles:1469422551733108908>", "style": discord.ButtonStyle.success}
+    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿", "style": discord.ButtonStyle.success},
+    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂", "style": discord.ButtonStyle.success}
 }
 
 MAX_SUBSTAT = 15
@@ -497,5 +497,6 @@ async def comparer(interaction: discord.Interaction):
 if __name__ == "__main__":
     keep_alive()
     bot.run(TOKEN)
+
 
 
