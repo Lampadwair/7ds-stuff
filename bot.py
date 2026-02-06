@@ -426,51 +426,54 @@ class CompareModal(Modal):
         )
         self.add_item(self.base_input)
 
-        self.current_input = TextInput(
-            label=f"{self.gear_info['type']} avec la pièce SSR actuelle",
-            placeholder="Stat affichée avec la pièce équipée",
-            min_length=2,
-            max_length=8,
+        self.current_pct_input = TextInput(
+            label=f"% de ta pièce SSR actuelle",
+            placeholder="Ex: 9.23",
+            min_length=1,
+            max_length=6,
             required=True
         )
-        self.add_item(self.current_input)
+        self.add_item(self.current_pct_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             base_stat = int(self.base_input.value)
-            current_stat = int(self.current_input.value)
+            current_pct = float(self.current_pct_input.value.replace(",", "."))
 
-            current_pct, target_pct = required_percent_to_beat_current(
-                self.gear_key, base_stat, current_stat
-            )
+            if not 0 <= current_pct <= 15:
+                await interaction.response.send_message(
+                    "❌ Le pourcentage doit être entre 0 et 15%.",
+                    ephemeral=True
+                )
+                return
 
             data = GEAR_DATA[self.gear_key]
+            max_ssr = data["flat_ssr"]
             type_stat = data["type"]
+
+            gain_actuel = max_ssr * (current_pct / 100)
+            current_stat = int(base_stat + gain_actuel)
+
+            _, target_pct = required_percent_to_beat_current(
+                self.gear_key, base_stat, current_stat
+            )
 
             embed = discord.Embed(
                 title="⚖️ Comparateur de nouvelle pièce SSR",
                 color=0x9b59b6
             )
 
-            embed.add_field(
-                name="Gear :",
-                value=self.gear_key.capitalize(),
-                inline=True
-            )
-            embed.add_field(
-                name="Stat de base",
-                value=f"{base_stat:,}",
-                inline=True
-            )
+            embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
+            embed.add_field(name="Stat de base", value=f"{base_stat:,}", inline=True)
             embed.add_field(
                 name=f"{type_stat} avec ta SSR actuelle",
-                value=f"{current_stat:,}",
+                value=f"{current_stat:,} (≈ +{int(gain_actuel)} {type_stat})",
                 inline=True
             )
 
             embed.add_field(
-                name="Roll actuel estimé",
-                value=f"≈ **{current_pct}%**",
+                name="Roll actuel",
+                value=f"**{current_pct}%**",
                 inline=True
             )
             embed.add_field(
@@ -487,7 +490,7 @@ class CompareModal(Modal):
 
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVérifie que tu as bien mis des nombres entiers.",
+                "❌ **Erreur de saisie**\nVérifie que la base est un entier et le % un nombre (ex: 9.23).",
                 ephemeral=True
             )
         except Exception as e:
@@ -500,6 +503,7 @@ class CompareModal(Modal):
                 )
             except:
                 pass
+
 
 # === VUES ===
 class PivotView(View):
@@ -606,4 +610,5 @@ async def comparer(interaction: discord.Interaction):
 # === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
+
 
