@@ -101,30 +101,31 @@ class PivotView(View):
         super().__init__(timeout=None)
 
     # --- LIGNE 1 : HP (Bleu) ---
+    # CORRECTION : (self, button, interaction)
     @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
-    async def ceinture_btn(self, interaction: discord.Interaction, button: Button):
+    async def ceinture_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("ceinture"))
 
     @discord.ui.button(label="Orbe (HP)", style=discord.ButtonStyle.primary, emoji="🔮", row=0)
-    async def orbe_btn(self, interaction: discord.Interaction, button: Button):
+    async def orbe_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("orbe"))
 
     # --- LIGNE 2 : ATK (Rouge) ---
     @discord.ui.button(label="Bracelet (ATK)", style=discord.ButtonStyle.danger, emoji="🥊", row=1)
-    async def bracelet_btn(self, interaction: discord.Interaction, button: Button):
+    async def bracelet_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("bracelet"))
 
     @discord.ui.button(label="Bague (ATK)", style=discord.ButtonStyle.danger, emoji="💍", row=1)
-    async def bague_btn(self, interaction: discord.Interaction, button: Button):
+    async def bague_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("bague"))
 
     # --- LIGNE 3 : DEF (Vert) ---
     @discord.ui.button(label="Collier (DEF)", style=discord.ButtonStyle.success, emoji="📿", row=2)
-    async def collier_btn(self, interaction: discord.Interaction, button: Button):
+    async def collier_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("collier"))
 
     @discord.ui.button(label="Boucles (DEF)", style=discord.ButtonStyle.success, emoji="👂", row=2)
-    async def boucles_btn(self, interaction: discord.Interaction, button: Button):
+    async def boucles_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("boucles"))
 
 # === START ===
@@ -135,7 +136,7 @@ async def on_ready():
 @bot.command()
 async def calcul(ctx):
     if ctx.author.bot: return
-    embed = discord.Embedembed = discord.Embed(title="Salut <:pepegojo:901403926186840094> ", description="Tu veux analyser quoi <:whatcry:871036640250978304> <:whatcry:871036640250978304> :")
+embed = discord.Embedembed = discord.Embed(title="Salut <:darius_chokbar:1406639439689814146>  ", description="Tu veux analyser quoi <:darius_chokbar:1406639439689814146> <:darius_chokbar:1406639439689814146>  :")
     await ctx.send(embed=embed, view=PivotView())
 
 keep_alive()
