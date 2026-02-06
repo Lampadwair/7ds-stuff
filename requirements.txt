@@ -1,1 +1,4 @@
 py-cord
+flask
+threading
+python-dotenv
