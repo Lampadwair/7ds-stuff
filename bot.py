@@ -1,16 +1,13 @@
 import discord
-from discord.ext import commands
+from discord import app_commands
 from discord.ui import Button, View, Modal, TextInput
 import traceback
-import sys
-
 import os
 from dotenv import load_dotenv
-
 from flask import Flask
 from threading import Thread
 
-# === WEB SERVER ===
+# === WEB SERVER (KEEP ALIVE) ===
 app = Flask('')
 
 @app.route('/')
@@ -28,10 +25,11 @@ def keep_alive():
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# On active tous les intents pour éviter les problèmes de droits
-intents = discord.Intents.all()
+intents = discord.Intents.default()
+intents.message_content = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = discord.Client(intents=intents)
+tree = app_commands.CommandTree(bot)
 
 # === DONNÉES 7DS ===
 GEAR_DATA = {
@@ -44,15 +42,42 @@ GEAR_DATA = {
 }
 
 def calculate_pivot(gear_key, base_stat):
+    """Calcule le pivot à partir de la stat de base"""
     data = GEAR_DATA[gear_key]
     delta = data["flat_ssr"] - data["flat_r"]
-    try:
-        pivot = 15 - (delta / float(base_stat) * 100)
-        return round(pivot, 2)
-    except ZeroDivisionError:
+    if base_stat == 0:
         return 0
+    pivot = 15 - (delta / float(base_stat) * 100)
+    return round(pivot, 2)
 
-# === MODAL ===
+def get_verdict_message(pivot, gear_name):
+    """Génère le message détaillé basé sur le pivot"""
+    if pivot > 13.5:
+        return (
+            f"⚠️ **Cas DIFFICILE**\n\n"
+            f"Pour ce personnage sur **{gear_name}**, vous devez avoir :\n"
+            f"• Une pièce **SSR avec >{pivot}%** (quasi parfaite)\n"
+            f"• **OU** une pièce **R 15% maxée** (qui sera meilleure)\n\n"
+            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR excellent.*"
+        )
+    elif pivot < 10:
+        return (
+            f"✅ **Cas FACILE**\n\n"
+            f"Pour ce personnage sur **{gear_name}**, vous devez avoir :\n"
+            f"• Une pièce **SSR avec >{pivot}%** (très accessible)\n"
+            f"• La pièce **R 15% maxée** sera toujours inférieure\n\n"
+            f"💡 *Recommandation : Mettez du SSR sans hésiter, même moyen.*"
+        )
+    else:
+        return (
+            f"⚖️ **Cas MOYEN**\n\n"
+            f"Pour ce personnage sur **{gear_name}**, vous devez avoir :\n"
+            f"• Une pièce **SSR avec >{pivot}%** (correct)\n"
+            f"• **OU** une pièce **R 15% maxée** (si vous n'avez pas mieux)\n\n"
+            f"💡 *Recommandation : Un SSR à 12-13% fera l'affaire.*"
+        )
+
+# === MODAL (POP-UP) ===
 class StatModal(Modal):
     def __init__(self, gear_key):
         super().__init__(title=f"Calcul {gear_key.capitalize()}")
@@ -69,92 +94,93 @@ class StatModal(Modal):
         self.add_item(self.stat_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # NOTE: On enlève le defer() pour répondre directement et éviter le timeout
         try:
-            print(f"DEBUG: Réception valeur {self.stat_input.value}") # Log dans Render
             valeur = int(self.stat_input.value)
             pivot = calculate_pivot(self.gear_key, valeur)
+            verdict = get_verdict_message(pivot, self.gear_key.capitalize())
             
-            embed = discord.Embed(title="📊 Résultat de l'Analyse", color=0x2ecc71)
-            embed.add_field(name="Équipement", value=self.gear_key.capitalize(), inline=True)
-            embed.add_field(name="Base Stat", value=f"{valeur}", inline=True)
-            
+            # Choix de la couleur
             if pivot > 13.5:
-                verdict = "⚠️ **Attention** : Le R 15% est très fort. SSR Perfect requis."
-                color = 0xe74c3c 
+                color = 0xe74c3c  # Rouge
             elif pivot < 10:
-                verdict = "✅ **EASY** : Mettez toujours du SSR."
-                color = 0x2ecc71 
+                color = 0x2ecc71  # Vert
             else:
-                verdict = "⚖️ **MID** : Un SSR correct (12-13%) suffit."
-                color = 0xf1c40f 
-                
-            embed.color = color
-            embed.add_field(name="🎯 PIVOT À VISER", value=f"**> {pivot}%**", inline=False)
-            embed.set_footer(text=verdict)
+                color = 0xf1c40f  # Jaune
+            
+            # Création de l'embed
+            embed = discord.Embed(
+                title="📊 Résultat de l'Analyse",
+                description=verdict,
+                color=color
+            )
+            embed.add_field(name="Équipement analysé", value=self.gear_key.capitalize(), inline=True)
+            embed.add_field(name="Stat de base", value=f"{valeur:,}", inline=True)
+            embed.add_field(name="🎯 Pivot calculé", value=f"**{pivot}%**", inline=True)
+            embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
 
-            # Réponse directe
             await interaction.response.send_message(embed=embed)
             
+        except ValueError:
+            await interaction.response.send_message(
+                "❌ **Erreur de saisie**\nVeuillez entrer un nombre entier valide (ex: 126000).",
+                ephemeral=True
+            )
         except Exception as e:
-            # On imprime l'erreur complète dans la console Render
-            print("❌ ERREUR MODAL :")
-            traceback.print_exc() 
-            # On essaie d'avertir l'utilisateur
-            if not interaction.response.is_done():
-                await interaction.response.send_message(f"❌ Erreur interne : {e}", ephemeral=True)
+            print(f"[ERREUR MODAL] {e}")
+            traceback.print_exc()
+            await interaction.response.send_message(
+                f"❌ Une erreur interne s'est produite : {e}",
+                ephemeral=True
+            )
 
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        print("❌ ERREUR MODAL (on_error) :")
-        traceback.print_exc()
-        if not interaction.response.is_done():
-            await interaction.response.send_message("❌ Oups, quelque chose a planté.", ephemeral=True)
-
-# === VIEW ===
+# === VIEW (BOUTONS) ===
 class PivotView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    # Note: On garde l'ordre inversé (button, interaction) qui fonctionne chez toi
-    
     @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
-    async def ceinture_btn(self, button: Button, interaction: discord.Interaction):
+    async def ceinture_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("ceinture"))
 
     @discord.ui.button(label="Orbe (HP)", style=discord.ButtonStyle.primary, emoji="🔮", row=0)
-    async def orbe_btn(self, button: Button, interaction: discord.Interaction):
+    async def orbe_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("orbe"))
 
     @discord.ui.button(label="Bracelet (ATK)", style=discord.ButtonStyle.danger, emoji="🥊", row=1)
-    async def bracelet_btn(self, button: Button, interaction: discord.Interaction):
+    async def bracelet_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("bracelet"))
 
     @discord.ui.button(label="Bague (ATK)", style=discord.ButtonStyle.danger, emoji="💍", row=1)
-    async def bague_btn(self, button: Button, interaction: discord.Interaction):
+    async def bague_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("bague"))
 
     @discord.ui.button(label="Collier (DEF)", style=discord.ButtonStyle.success, emoji="📿", row=2)
-    async def collier_btn(self, button: Button, interaction: discord.Interaction):
+    async def collier_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("collier"))
 
     @discord.ui.button(label="Boucles (DEF)", style=discord.ButtonStyle.success, emoji="👂", row=2)
-    async def boucles_btn(self, button: Button, interaction: discord.Interaction):
+    async def boucles_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("boucles"))
 
-# === START ===
+# === ÉVÉNEMENTS ===
 @bot.event
 async def on_ready():
+    await tree.sync()
     print(f"✅ Bot connecté : {bot.user}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"🔄 {len(synced)} commande(s) synchronisée(s) !")
-    except Exception as e:
-        print(f"❌ Erreur de synchro : {e}")
+    print(f"📚 Discord.py version : {discord.__version__}")
+    print(f"🔄 Commandes synchronisées !")
 
-@bot.tree.command(name="calcul", description="Ouvre le calculateur d'optimisation Gear")
+# === COMMANDE SLASH ===
+@tree.command(name="calcul", description="🧮 Ouvre le calculateur d'optimisation Gear 7DS")
 async def calcul(interaction: discord.Interaction):
-    embed = discord.Embed(title="🧮 Calculateur Gear 7DS", description="Choisissez une pièce d'équipement :")
+    embed = discord.Embed(
+        title="🧮 Calculateur d'Optimisation Gear",
+        description="Sélectionnez la pièce d'équipement que vous souhaitez analyser :",
+        color=0x3498db
+    )
+    embed.set_footer(text="Cliquez sur un bouton pour commencer")
     await interaction.response.send_message(embed=embed, view=PivotView())
 
+# === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
