@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
+import traceback
+import sys
 
 import os
 from dotenv import load_dotenv
@@ -26,10 +28,10 @@ def keep_alive():
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-intents = discord.Intents.default()
-intents.message_content = True
+# On active tous les intents pour éviter les problèmes de droits
+intents = discord.Intents.all()
 
-bot = commands.Bot(command_prefix="/", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 # === DONNÉES 7DS ===
 GEAR_DATA = {
@@ -44,8 +46,11 @@ GEAR_DATA = {
 def calculate_pivot(gear_key, base_stat):
     data = GEAR_DATA[gear_key]
     delta = data["flat_ssr"] - data["flat_r"]
-    pivot = 15 - (delta / float(base_stat) * 100)
-    return round(pivot, 2)
+    try:
+        pivot = 15 - (delta / float(base_stat) * 100)
+        return round(pivot, 2)
+    except ZeroDivisionError:
+        return 0
 
 # === MODAL ===
 class StatModal(Modal):
@@ -56,7 +61,7 @@ class StatModal(Modal):
         
         self.stat_input = TextInput(
             label=f"Base {self.gear_info['type']} (Sans Stuff)",
-            placeholder="Ex: 120000",
+            placeholder="Ex: 126000",
             min_length=2,
             max_length=8,
             required=True
@@ -64,9 +69,9 @@ class StatModal(Modal):
         self.add_item(self.stat_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-
+        # NOTE: On enlève le defer() pour répondre directement et éviter le timeout
         try:
+            print(f"DEBUG: Réception valeur {self.stat_input.value}") # Log dans Render
             valeur = int(self.stat_input.value)
             pivot = calculate_pivot(self.gear_key, valeur)
             
@@ -75,32 +80,43 @@ class StatModal(Modal):
             embed.add_field(name="Base Stat", value=f"{valeur}", inline=True)
             
             if pivot > 13.5:
-                verdict = "⚠️ **HARD** : Le R 15% est très fort. SSR Perfect requis."
-                color = 0xe74c3c # Rouge
+                verdict = "⚠️ **Attention** : Le R 15% est très fort. SSR Perfect requis."
+                color = 0xe74c3c 
             elif pivot < 10:
                 verdict = "✅ **EASY** : Mettez toujours du SSR."
-                color = 0x2ecc71 # Vert
+                color = 0x2ecc71 
             else:
                 verdict = "⚖️ **MID** : Un SSR correct (12-13%) suffit."
-                color = 0xf1c40f # Jaune
+                color = 0xf1c40f 
                 
             embed.color = color
             embed.add_field(name="🎯 PIVOT À VISER", value=f"**> {pivot}%**", inline=False)
             embed.set_footer(text=verdict)
 
-            await interaction.followup.send(embed=embed)
+            # Réponse directe
+            await interaction.response.send_message(embed=embed)
             
-        except ValueError:
-            await interaction.followup.send("❌ Erreur : Entrez un nombre entier valide.", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Erreur : {e}", ephemeral=True)
+            # On imprime l'erreur complète dans la console Render
+            print("❌ ERREUR MODAL :")
+            traceback.print_exc() 
+            # On essaie d'avertir l'utilisateur
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"❌ Erreur interne : {e}", ephemeral=True)
 
-# === VUE AVEC LES 6 BOUTONS ===
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        print("❌ ERREUR MODAL (on_error) :")
+        traceback.print_exc()
+        if not interaction.response.is_done():
+            await interaction.response.send_message("❌ Oups, quelque chose a planté.", ephemeral=True)
+
+# === VIEW ===
 class PivotView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    # --- LIGNE 1 : HP (Bleu) ---
+    # Note: On garde l'ordre inversé (button, interaction) qui fonctionne chez toi
+    
     @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
     async def ceinture_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("ceinture"))
@@ -109,7 +125,6 @@ class PivotView(View):
     async def orbe_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("orbe"))
 
-    # --- LIGNE 2 : ATK (Rouge) ---
     @discord.ui.button(label="Bracelet (ATK)", style=discord.ButtonStyle.danger, emoji="🥊", row=1)
     async def bracelet_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("bracelet"))
@@ -118,7 +133,6 @@ class PivotView(View):
     async def bague_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("bague"))
 
-    # --- LIGNE 3 : DEF (Vert) ---
     @discord.ui.button(label="Collier (DEF)", style=discord.ButtonStyle.success, emoji="📿", row=2)
     async def collier_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("collier"))
@@ -130,16 +144,17 @@ class PivotView(View):
 # === START ===
 @bot.event
 async def on_ready():
-    print(f"✅ Bot prêt : {bot.user}")
+    print(f"✅ Bot connecté : {bot.user}")
+    try:
+        synced = await bot.tree.sync()
+        print(f"🔄 {len(synced)} commande(s) synchronisée(s) !")
+    except Exception as e:
+        print(f"❌ Erreur de synchro : {e}")
 
-@bot.command()
-async def calcul(ctx):
-    # J'ai nettoyé cette partie pour éviter l'IndentationError
-    if ctx.author.bot:
-        return
-        
-    embed = discord.Embedembed = discord.Embed(title="Salut <:darius_chokbar:1406639439689814146>  ", description="Tu veux analyser quoi <:darius_chokbar:1406639439689814146> <:darius_chokbar:1406639439689814146>  :")
-    await ctx.send(embed=embed, view=PivotView())
+@bot.tree.command(name="calcul", description="Ouvre le calculateur d'optimisation Gear")
+async def calcul(interaction: discord.Interaction):
+    embed = discord.Embed(title="🧮 Calculateur Gear 7DS", description="Choisissez une pièce d'équipement :")
+    await interaction.response.send_message(embed=embed, view=PivotView())
 
 keep_alive()
 bot.run(TOKEN)
