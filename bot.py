@@ -17,8 +17,8 @@ GEAR_DATA = {
     "orbe":     {"ssr": 5800,  "r": 2900, "type": "HP", "emoji": "🔮", "style": discord.ButtonStyle.primary},
     "bracelet": {"ssr": 1240,  "r": 540,  "type": "ATK", "emoji": "🥊", "style": discord.ButtonStyle.danger},
     "bague":    {"ssr": 640,   "r": 290,  "type": "ATK", "emoji": "💍", "style": discord.ButtonStyle.danger},
-    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿", "style": discord.ButtonStyle.success},
-    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂", "style": discord.ButtonStyle.success}
+    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿<:collier:1469422499405234338> ", "style": discord.ButtonStyle.success},
+    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂<:boucles:1469422551733108908>", "style": discord.ButtonStyle.success}
 }
 
 MAX_SUBSTAT = 15
@@ -113,7 +113,7 @@ class StatModal(Modal):
             embed.add_field(name="Stats noires", value=f"{stat_noire:,}", inline=True)
             embed.add_field(name="Stats vertes", value=f"{stat_verte:,}", inline=True)
             embed.add_field(name="Base calculée", value=f"{base_stat:,}", inline=True)
-            embed.set_footer(text="Lampa Calculator • Consultez le guide pour plus d'infos")
+            embed.set_footer(text="Lampa Calculator • Consultez les dms de Lampouille pour plus d'infos")
 
             await interaction.response.send_message(embed=embed)
             
@@ -145,7 +145,7 @@ class CompareModal(Modal):
         
         self.stat_noire_input = TextInput(
             label=f"{self.gear_info['type']} affiché (noir)",
-            placeholder="Ex: 207152 (stats noires affichées)",
+            placeholder="Ex: 207152 (stats noires = totales affichées)",
             min_length=2,
             max_length=8,
             required=True
@@ -163,7 +163,7 @@ class CompareModal(Modal):
 
         self.piece_stat_pct_input = TextInput(
             label=f"% de la stat de base de ta pièce SSR",
-            placeholder="Ex: 50 (si pièce = 6200/12400)",
+            placeholder="Ex : 85.22",
             min_length=1,
             max_length=6,
             required=True
@@ -203,7 +203,7 @@ class CompareModal(Modal):
 
             if not 0 <= current_substat_roll <= MAX_SUBSTAT:
                 await interaction.response.send_message(
-                    f"❌ Les substats doivent être entre 0 et {MAX_SUBSTAT}%",
+                    f"❌ Les substats doivent être entre 0 et {MAX_SUBSTAT}% ",
                     ephemeral=True
                 )
                 return
@@ -225,7 +225,7 @@ class CompareModal(Modal):
                 surplus = round(current_substat_roll - pivot, 2)
                 total_surplus = round(ssr_current_total - r_total)
                 message = (
-                    f"✅ **Ta pièce bat déjà la R 15% !**\n\n"
+                    f"✅ **<:gotosleep:871036926549975112>  Ta pièce bat déjà la R 15% ! <:top1glo:1021142245048594452> **\n\n"
                     f"Marge : **+{surplus}%** soit **+{total_surplus:,}** {self.gear_info['type']}"
                 )
                 color = 0x2ecc71
@@ -253,11 +253,11 @@ class CompareModal(Modal):
             if not pivot_result['rentable']:
                 embed.add_field(
                     name="⚠️ Attention",
-                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : pièce trop faible",
+                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : <:lul:871036951376068719>  Pièce trop faible  <:dogkek:923909141523734528>   ",
                     inline=False
                 )
 
-            embed.set_footer(text="Lampa Calculator • Consultez le guide pour plus d'infos")
+            embed.set_footer(text="Lampa Calculator • Consultez les dms de Lampouille pour plus d'infos")
 
             await interaction.response.send_message(embed=embed)
             
@@ -486,7 +486,7 @@ async def calcul(interaction: discord.Interaction):
 @tree.command(name="comparer", description="⚖️ Estimer le roll à viser pour battre du R maxé")
 async def comparer(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="⚖️ Calculateur de roll SSR",
+        title="<:cash:936291615679598672>  Calculateur de roll SSR  <:cash:936291615679598672> ",
         description="Choisissez le type d'équipement à comparer :",
         color=0x9b59b6
     )
@@ -497,3 +497,4 @@ async def comparer(interaction: discord.Interaction):
 if __name__ == "__main__":
     keep_alive()
     bot.run(TOKEN)
+
