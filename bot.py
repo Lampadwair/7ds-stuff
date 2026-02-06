@@ -39,7 +39,6 @@ HTML_TEMPLATE = """
             position: relative;
         }
 
-        /* Animated Background Shapes */
         .bg-shapes {
             position: absolute;
             width: 100%;
@@ -89,7 +88,6 @@ HTML_TEMPLATE = """
             66% { transform: translate(-50px, 50px) scale(0.9); }
         }
 
-        /* Glass Container */
         .container {
             position: relative;
             z-index: 1;
@@ -106,17 +104,10 @@ HTML_TEMPLATE = """
         }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Status Badge */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -156,7 +147,6 @@ HTML_TEMPLATE = """
             letter-spacing: 1px;
         }
 
-        /* Title */
         h1 {
             color: #fff;
             font-size: 48px;
@@ -172,7 +162,6 @@ HTML_TEMPLATE = """
             font-weight: 300;
         }
 
-        /* Features */
         .features {
             display: flex;
             flex-direction: column;
@@ -202,7 +191,6 @@ HTML_TEMPLATE = """
             font-size: 24px;
         }
 
-        /* Commands Section */
         .command {
             background: rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -215,27 +203,19 @@ HTML_TEMPLATE = """
             display: inline-block;
         }
 
-        /* Footer */
         .footer {
             margin-top: 30px;
             color: rgba(255, 255, 255, 0.6);
             font-size: 14px;
         }
 
-        /* Responsive */
         @media (max-width: 600px) {
             .container {
                 padding: 40px 30px;
                 margin: 20px;
             }
-
-            h1 {
-                font-size: 36px;
-            }
-
-            .subtitle {
-                font-size: 16px;
-            }
+            h1 { font-size: 36px; }
+            .subtitle { font-size: 16px; }
         }
     </style>
 </head>
@@ -320,7 +300,6 @@ GEAR_DATA = {
 }
 
 def calculate_pivot(gear_key, base_stat):
-    """Calcule le pivot"""
     data = GEAR_DATA[gear_key]
     delta = data["flat_ssr"] - data["flat_r"]
     if base_stat == 0:
@@ -329,7 +308,6 @@ def calculate_pivot(gear_key, base_stat):
     return round(pivot, 2)
 
 def get_verdict_message(pivot, gear_name):
-    """Message détaillé selon le pivot - VERSION MODIFIÉE PAR L'UTILISATEUR"""
     if pivot > 13.5:
         return (
             f"⚠️ **Roll élevé nécéssaire - Va farm gold**\n\n"
@@ -355,27 +333,27 @@ def get_verdict_message(pivot, gear_name):
             f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR>{pivot}%.*\n\n"
         )
 
-def compare_ssr_pieces(gear_key, base_stat, percent1, percent2):
-    """Compare deux pièces SSR"""
+# --- Comparateur : calcule le % cible pour battre la SSR actuelle ---
+def required_percent_to_beat_current(gear_key, base_stat, current_gear_stat):
+    """
+    base_stat = stat du perso sans stuff
+    current_gear_stat = stat du perso avec la pièce SSR actuelle équipée
+    On en déduit le % actuel, puis on donne le % minimum pour qu'une nouvelle SSR soit plus forte.
+    """
     data = GEAR_DATA[gear_key]
     max_ssr = data["flat_ssr"]
-    
-    # Calcul des stats finales
-    stat1 = base_stat + (max_ssr * percent1 / 100)
-    stat2 = base_stat + (max_ssr * percent2 / 100)
-    
-    difference = abs(stat1 - stat2)
-    difference_percent = round((difference / base_stat) * 100, 2)
-    
-    return {
-        "stat1": int(stat1),
-        "stat2": int(stat2),
-        "difference": int(difference),
-        "difference_percent": difference_percent,
-        "winner": 1 if stat1 > stat2 else 2 if stat2 > stat1 else 0
-    }
 
-# === MODAL PIVOT (AVEC TES MODIFICATIONS) ===
+    gain_actuel = current_gear_stat - base_stat
+    if gain_actuel <= 0:
+        return 0.0, 0.0  # cas degueu
+
+    percent_actuel = gain_actuel / max_ssr * 100
+    # On veut strictement mieux que la pièce actuelle → +0.1%
+    percent_cible = round(percent_actuel + 0.1, 2)
+
+    return round(percent_actuel, 2), percent_cible
+
+# === MODAL PIVOT ===
 class StatModal(Modal):
     def __init__(self, gear_key):
         super().__init__(title=f"Calcul {gear_key.capitalize()}")
@@ -393,7 +371,6 @@ class StatModal(Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            print(f"[MODAL] Valeur reçue: {self.stat_input.value}", flush=True)
             valeur = int(self.stat_input.value)
             pivot = calculate_pivot(self.gear_key, valeur)
             verdict = get_verdict_message(pivot, self.gear_key.capitalize())
@@ -416,7 +393,6 @@ class StatModal(Modal):
             embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
 
             await interaction.response.send_message(embed=embed)
-            print("[MODAL] Réponse envoyée avec succès", flush=True)
             
         except ValueError:
             await interaction.response.send_message(
@@ -434,106 +410,84 @@ class StatModal(Modal):
             except:
                 pass
 
-# === MODAL COMPARAISON ===
+# === MODAL COMPARE (base + stat gear actuelle) ===
 class CompareModal(Modal):
     def __init__(self, gear_key):
-        super().__init__(title=f"Comparer 2 SSR - {gear_key.capitalize()}")
+        super().__init__(title=f"Comparer à ta SSR actuelle - {gear_key.capitalize()}")
         self.gear_key = gear_key
         self.gear_info = GEAR_DATA[gear_key]
         
-        self.base_stat_input = TextInput(
+        self.base_input = TextInput(
             label=f"Base {self.gear_info['type']} (Sans Stuff)",
             placeholder="Renseigner la stat noire du perso - la verte",
             min_length=2,
             max_length=8,
             required=True
         )
-        self.add_item(self.base_stat_input)
-        
-        self.ssr1_input = TextInput(
-            label="% de la première pièce SSR",
-            placeholder="Ex: 12.5",
-            min_length=1,
-            max_length=5,
+        self.add_item(self.base_input)
+
+        self.current_input = TextInput(
+            label=f"{self.gear_info['type']} avec la pièce SSR actuelle",
+            placeholder="Stat affichée avec la pièce équipée",
+            min_length=2,
+            max_length=8,
             required=True
         )
-        self.add_item(self.ssr1_input)
-        
-        self.ssr2_input = TextInput(
-            label="% de la deuxième pièce SSR",
-            placeholder="Ex: 13.8",
-            min_length=1,
-            max_length=5,
-            required=True
-        )
-        self.add_item(self.ssr2_input)
+        self.add_item(self.current_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            base_stat = int(self.base_stat_input.value)
-            percent1 = float(self.ssr1_input.value)
-            percent2 = float(self.ssr2_input.value)
-            
-            # Validation
-            if not (0 <= percent1 <= 15) or not (0 <= percent2 <= 15):
-                await interaction.response.send_message(
-                    "❌ Les pourcentages doivent être entre 0 et 15%.",
-                    ephemeral=True
-                )
-                return
-            
-            result = compare_ssr_pieces(self.gear_key, base_stat, percent1, percent2)
-            
-            # Création de l'embed
-            if result["winner"] == 1:
-                color = 0x2ecc71
-                title = "🏆 La Pièce #1 est meilleure !"
-                description = f"La pièce SSR à **{percent1}%** est supérieure."
-            elif result["winner"] == 2:
-                color = 0xe74c3c
-                title = "🏆 La Pièce #2 est meilleure !"
-                description = f"La pièce SSR à **{percent2}%** est supérieure."
-            else:
-                color = 0xf1c40f
-                title = "⚖️ Égalité parfaite !"
-                description = "Les deux pièces donnent exactement les mêmes stats."
-            
-            embed = discord.Embed(title=title, description=description, color=color)
-            embed.add_field(name="📦 Équipement", value=self.gear_key.capitalize(), inline=True)
-            embed.add_field(name="📊 Base", value=f"{base_stat:,}", inline=True)
-            embed.add_field(name="🔢 Type", value=self.gear_info['type'], inline=True)
-            
+            base_stat = int(self.base_input.value)
+            current_stat = int(self.current_input.value)
+
+            current_pct, target_pct = required_percent_to_beat_current(
+                self.gear_key, base_stat, current_stat
+            )
+
+            data = GEAR_DATA[self.gear_key]
+            type_stat = data["type"]
+
+            embed = discord.Embed(
+                title="⚖️ Comparateur de nouvelle pièce SSR",
+                color=0x9b59b6
+            )
+
             embed.add_field(
-                name=f"{'✅' if result['winner'] == 1 else '❌'} Pièce #1 ({percent1}%)",
-                value=f"**{result['stat1']:,}** {self.gear_info['type']} total",
+                name="Gear :",
+                value=self.gear_key.capitalize(),
                 inline=True
             )
             embed.add_field(
-                name=f"{'✅' if result['winner'] == 2 else '❌'} Pièce #2 ({percent2}%)",
-                value=f"**{result['stat2']:,}** {self.gear_info['type']} total",
+                name="Stat de base",
+                value=f"{base_stat:,}",
                 inline=True
             )
             embed.add_field(
-                name="📈 Différence",
-                value=f"**{result['difference']:,}** ({result['difference_percent']}%)",
+                name=f"{type_stat} avec ta SSR actuelle",
+                value=f"{current_stat:,}",
                 inline=True
             )
-            
-            # Recommandation
-            if result["difference_percent"] < 1:
-                verdict = "💡 La différence est négligeable. Gardez la pièce avec les meilleures sous-stats."
-            elif result["difference_percent"] < 3:
-                verdict = "💡 Différence faible. Privilégiez celle avec les meilleures sous-stats."
-            else:
-                verdict = f"💡 Différence significative ! Utilisez la pièce #{result['winner']}."
-            
-            embed.set_footer(text=verdict)
-            
+
+            embed.add_field(
+                name="Roll actuel estimé",
+                value=f"≈ **{current_pct}%**",
+                inline=True
+            )
+            embed.add_field(
+                name="Roll cible pour être meilleure",
+                value=f"**>{target_pct}%**",
+                inline=True
+            )
+
+            embed.set_footer(
+                text="Conseil : ne roll une nouvelle SSR que si tu peux viser plus haut que ta pièce actuelle."
+            )
+
             await interaction.response.send_message(embed=embed)
-            
+
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVérifiez que la stat de base est un entier et les % sont des nombres (ex: 12.5).",
+                "❌ **Erreur de saisie**\nVérifie que tu as bien mis des nombres entiers.",
                 ephemeral=True
             )
         except Exception as e:
@@ -547,7 +501,7 @@ class CompareModal(Modal):
             except:
                 pass
 
-# === VIEW PIVOT (6 BOUTONS) ===
+# === VUES ===
 class PivotView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -576,7 +530,6 @@ class PivotView(View):
     async def boucles_btn(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(StatModal("boucles"))
 
-# === VIEW COMPARAISON (6 BOUTONS) ===
 class CompareView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -612,7 +565,6 @@ async def on_ready():
     print(f"✅ Bot connecté : {bot.user}", flush=True)
     print(f"📚 Discord.py version : {discord.__version__}", flush=True)
     print("=" * 60, flush=True)
-    
     try:
         synced = await tree.sync()
         print(f"🔄 Commandes synchronisées : {len(synced)}", flush=True)
@@ -622,29 +574,30 @@ async def on_ready():
         print(f"❌ Erreur de synchronisation : {e}", flush=True)
         traceback.print_exc()
 
-# === COMMANDE CALCUL (AVEC TON TITRE MODIFIÉ) ===
-@tree.command(name="calcul", description="Calculer le % optimal pour une pièce d'équipement")
+# === COMMANDES SLASH ===
+@tree.command(name="calcul", description="🧮 Calculer le pivot optimal pour une pièce d'équipement")
 async def calcul(interaction: discord.Interaction):
-    print(f"[COMMANDE] /calcul appelée par {interaction.user}", flush=True)
     try:
         embed = discord.Embed(
             title="% Gear Roll Calculator <:LOVE:871036790021169213> ",
-            description="Sélectionnez le type d'équipement que vous souhaitez analyser :",
+            description="Sélectionnez le type de pièce d'équipement que vous souhaitez analyser :",
             color=0x3498db
         )
         embed.set_footer(text="Cliquez sur un bouton pour commencer")
         await interaction.response.send_message(embed=embed, view=PivotView())
-        print("[COMMANDE] Réponse envoyée", flush=True)
     except Exception as e:
-        print(f"[ERREUR COMMANDE] {e}", flush=True)
+        print(f"[ERREUR COMMANDE CALCUL] {e}", flush=True)
         traceback.print_exc()
 
-# === COMMANDE COMPARER ===
-@tree.command(name="comparer", description="⚖️ Comparer deux pièces SSR du même type <:LOVE:871036790021169213>")
+@tree.command(name="comparer", description="⚖️ Estimer le roll à viser pour battre du R maxé")
 async def comparer(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="⚖️ Comparateur de gear SSR <:LOVE:871036790021169213>",
-        description="Sélectionnez le type d'équipement que vous voulez comparer :",
+        title="⚖️ Calculateur de roll SSR",
+        description=(
+            "Choisis le type d'équipement.\n"
+            "Le bot te dira à quel **% de roll** une nouvelle pièce SSR doit monter\n"
+            "pour être plus forte que celle que tu utilises déjà."
+        ),
         color=0x9b59b6
     )
     embed.set_footer(text="Cliquez sur un bouton pour commencer")
