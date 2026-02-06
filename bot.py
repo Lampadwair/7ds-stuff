@@ -447,26 +447,37 @@ class CompareModal(Modal):
                 )
                 return
 
+            data = GEAR_DATA[self.gear_key]
+            max_ssr = data["flat_ssr"]
+            
+            # Calcul du roll SSR de ta pièce actuelle (entre 0 et 15%)
+            current_roll = round(piece_pct / 100 * 15, 2)
+            
             # Calcul du PIVOT : % minimum de roll pour battre R 15%
             pivot = calculate_pivot(self.gear_key, base_stat)
             
-            # Couleur selon difficulté
-            if pivot > 13.5:
-                color = 0xe74c3c
-            elif pivot < 10:
+            # Comparaison : ta pièce vs pivot
+            if current_roll >= pivot:
+                verdict = f"✅ **Ta pièce actuelle ({current_roll}%) bat déjà une R 15% !**\n\nTu n'as pas besoin de la changer, sauf si tu veux optimiser davantage."
                 color = 0x2ecc71
             else:
-                color = 0xf1c40f
+                diff = round(pivot - current_roll, 2)
+                verdict = f"❌ **Ta pièce actuelle ({current_roll}%) ne bat pas encore une R 15%**\n\nIl te manque **{diff}%** de roll pour atteindre le pivot.\n\n💡 **Recommandation :** Garde une R 15% sur ce slot ou continue de roll ta SSR."
+                color = 0xe74c3c
 
             embed = discord.Embed(
-                title="🎯 % de Roll à Viser",
-                description=f"Pour ce perso sur **{self.gear_key.capitalize()}** :\n\nTu dois roll tes **substats à >{pivot}%**\npour battre une **R 15% maxée**",
+                title="⚖️ Analyse de ta pièce SSR",
+                description=verdict,
                 color=color
             )
 
             embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
             embed.add_field(name="Stat de base", value=f"{base_stat:,}", inline=True)
-            embed.add_field(name="🎯 Roll cible", value=f"**>{pivot}%**", inline=True)
+            embed.add_field(name="🎯 Pivot (vs R 15%)", value=f"**>{pivot}%**", inline=True)
+            
+            embed.add_field(name="📦 Ta pièce actuelle", value=f"{piece_pct}% de la stat max", inline=True)
+            embed.add_field(name="🔢 Roll SSR estimé", value=f"**≈ {current_roll}%**", inline=True)
+            embed.add_field(name="📊 Statut", value="✅ OK" if current_roll >= pivot else "❌ Insuffisant", inline=True)
 
             embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
 
@@ -487,6 +498,7 @@ class CompareModal(Modal):
                 )
             except:
                 pass
+
 
 
 # === VUES ===
@@ -594,6 +606,7 @@ async def comparer(interaction: discord.Interaction):
 # === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
+
 
 
 
