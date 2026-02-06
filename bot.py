@@ -413,71 +413,84 @@ class StatModal(Modal):
 # === MODAL COMPARE (base + stat gear actuelle) ===
 class CompareModal(Modal):
     def __init__(self, gear_key):
-        super().__init__(title=f"Comparer à ta SSR actuelle - {gear_key.capitalize()}")
+        super().__init__(title=f"Combien il te manque - {gear_key.capitalize()}")
         self.gear_key = gear_key
         self.gear_info = GEAR_DATA[gear_key]
         
         self.base_input = TextInput(
             label=f"Base {self.gear_info['type']} (Sans Stuff)",
-            placeholder="Renseigner la stat noire du perso - la verte",
+            placeholder="Stat noire du perso (ex: 150000)",
             min_length=2,
             max_length=8,
             required=True
         )
         self.add_item(self.base_input)
 
-        self.piece_pct_input = TextInput(
-            label=f"% de la stat de ta pièce SSR actuelle",
-            placeholder="Ex: 99.11 (stat pièce / max * 100)",
+        self.piece_stat_pct_input = TextInput(
+            label=f"% de la stat de la pièce",
+            placeholder="Ex: 50 (si pièce = 6200 HP sur 12400 max)",
             min_length=1,
             max_length=6,
             required=True
         )
-        self.add_item(self.piece_pct_input)
+        self.add_item(self.piece_stat_pct_input)
+
+        self.current_substat_roll_input = TextInput(
+            label=f"% de roll substat actuel sur la pièce",
+            placeholder="Ex: 0 (si pas encore rollé) ou 7.5",
+            min_length=1,
+            max_length=5,
+            required=True
+        )
+        self.add_item(self.current_substat_roll_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             base_stat = int(self.base_input.value)
-            piece_pct = float(self.piece_pct_input.value.replace(",", "."))
+            piece_stat_pct = float(self.piece_stat_pct_input.value.replace(",", "."))
+            current_substat_roll = float(self.current_substat_roll_input.value.replace(",", "."))
 
-            if not 0 <= piece_pct <= 100:
+            if not 0 <= piece_stat_pct <= 100:
                 await interaction.response.send_message(
-                    "❌ Le pourcentage doit être entre 0 et 100%.",
+                    "❌ Le % de la stat de la pièce doit être entre 0 et 100%.",
                     ephemeral=True
                 )
                 return
 
-            data = GEAR_DATA[self.gear_key]
-            max_ssr = data["flat_ssr"]
-            
-            # Calcul du roll SSR de ta pièce actuelle (entre 0 et 15%)
-            current_roll = round(piece_pct / 100 * 15, 2)
-            
-            # Calcul du PIVOT : % minimum de roll pour battre R 15%
+            if not 0 <= current_substat_roll <= 15:
+                await interaction.response.send_message(
+                    "❌ Le % de roll substat doit être entre 0 et 15%.",
+                    ephemeral=True
+                )
+                return
+
+            # Calcul du PIVOT
             pivot = calculate_pivot(self.gear_key, base_stat)
             
-            # Comparaison : ta pièce vs pivot
-            if current_roll >= pivot:
-                verdict = f"✅ **Ta pièce actuelle ({current_roll}%) bat déjà une R 15% !**\n\nTu n'as pas besoin de la changer, sauf si tu veux optimiser davantage."
+            # Calcul de ce qu'il manque
+            if current_substat_roll >= pivot:
+                surplus = round(current_substat_roll - pivot, 2)
+                message = f"✅ **Ta pièce bat déjà une R 15% !**\n\nTu as **+{surplus}%** de marge."
                 color = 0x2ecc71
+                missing = 0
             else:
-                diff = round(pivot - current_roll, 2)
-                verdict = f"❌ **Ta pièce actuelle ({current_roll}%) ne bat pas encore une R 15%**\n\nIl te manque **{diff}%** de roll pour atteindre le pivot.\n\n💡 **Recommandation :** Garde une R 15% sur ce slot ou continue de roll ta SSR."
+                missing = round(pivot - current_substat_roll, 2)
+                message = f"🎯 **Il te faut {missing}% de roll substat supplémentaire**\n\npour que ta pièce soit meilleure qu'une R 15% maxée."
                 color = 0xe74c3c
 
             embed = discord.Embed(
-                title="⚖️ Analyse de ta pièce SSR",
-                description=verdict,
+                title="⚖️ Combien il te manque ?",
+                description=message,
                 color=color
             )
 
             embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
             embed.add_field(name="Stat de base", value=f"{base_stat:,}", inline=True)
-            embed.add_field(name="🎯 Pivot (vs R 15%)", value=f"**>{pivot}%**", inline=True)
+            embed.add_field(name="📦 Pièce", value=f"{piece_stat_pct}% de stat", inline=True)
             
-            embed.add_field(name="📦 Ta pièce actuelle", value=f"{piece_pct}% de la stat max", inline=True)
-            embed.add_field(name="🔢 Roll SSR estimé", value=f"**≈ {current_roll}%**", inline=True)
-            embed.add_field(name="📊 Statut", value="✅ OK" if current_roll >= pivot else "❌ Insuffisant", inline=True)
+            embed.add_field(name="Roll substat actuel", value=f"{current_substat_roll}%", inline=True)
+            embed.add_field(name="🎯 Roll cible (pivot)", value=f"**{pivot}%**", inline=True)
+            embed.add_field(name="📊 À roll encore", value=f"**{missing}%**", inline=True)
 
             embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
 
@@ -485,7 +498,7 @@ class CompareModal(Modal):
 
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVérifie que la base est un entier et le % un nombre (ex: 99.11).",
+                "❌ **Erreur de saisie**\nVérifie les formats (base = entier, % = nombres).",
                 ephemeral=True
             )
         except Exception as e:
@@ -498,8 +511,6 @@ class CompareModal(Modal):
                 )
             except:
                 pass
-
-
 
 # === VUES ===
 class PivotView(View):
@@ -606,6 +617,7 @@ async def comparer(interaction: discord.Interaction):
 # === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
+
 
 
 
