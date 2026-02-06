@@ -30,7 +30,11 @@ if not TOKEN:
     print("Error: Token not found")
     exit()
 
-bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
+# On demande juste les permissions par défaut + lire les messages
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="/", intents=intents)
 
 # === DATA ===
 GEAR_DATA = {
@@ -125,3 +129,4 @@ async def calcul(ctx):
 
 keep_alive()
 bot.run(TOKEN)
+
