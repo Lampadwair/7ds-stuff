@@ -426,71 +426,55 @@ class CompareModal(Modal):
         )
         self.add_item(self.base_input)
 
-        self.current_pct_input = TextInput(
-            label=f"% de ta pièce SSR actuelle",
-            placeholder="Ex: 9.23",
+        self.piece_pct_input = TextInput(
+            label=f"% de la stat de ta pièce SSR actuelle",
+            placeholder="Ex: 99.11 (stat pièce / max * 100)",
             min_length=1,
             max_length=6,
             required=True
         )
-        self.add_item(self.current_pct_input)
+        self.add_item(self.piece_pct_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
             base_stat = int(self.base_input.value)
-            current_pct = float(self.current_pct_input.value.replace(",", "."))
+            piece_pct = float(self.piece_pct_input.value.replace(",", "."))
 
-            if not 0 <= current_pct <= 15:
+            if not 0 <= piece_pct <= 100:
                 await interaction.response.send_message(
-                    "❌ Le pourcentage doit être entre 0 et 15%.",
+                    "❌ Le pourcentage doit être entre 0 et 100%.",
                     ephemeral=True
                 )
                 return
 
-            data = GEAR_DATA[self.gear_key]
-            max_ssr = data["flat_ssr"]
-            type_stat = data["type"]
-
-            gain_actuel = max_ssr * (current_pct / 100)
-            current_stat = int(base_stat + gain_actuel)
-
-            _, target_pct = required_percent_to_beat_current(
-                self.gear_key, base_stat, current_stat
-            )
+            # Calcul du PIVOT : % minimum de roll pour battre R 15%
+            pivot = calculate_pivot(self.gear_key, base_stat)
+            
+            # Couleur selon difficulté
+            if pivot > 13.5:
+                color = 0xe74c3c
+            elif pivot < 10:
+                color = 0x2ecc71
+            else:
+                color = 0xf1c40f
 
             embed = discord.Embed(
-                title="⚖️ Comparateur de nouvelle pièce SSR",
-                color=0x9b59b6
+                title="🎯 % de Roll à Viser",
+                description=f"Pour ce perso sur **{self.gear_key.capitalize()}** :\n\nTu dois roll tes **substats à >{pivot}%**\npour battre une **R 15% maxée**",
+                color=color
             )
 
             embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
             embed.add_field(name="Stat de base", value=f"{base_stat:,}", inline=True)
-            embed.add_field(
-                name=f"{type_stat} avec ta SSR actuelle",
-                value=f"{current_stat:,} (≈ +{int(gain_actuel)} {type_stat})",
-                inline=True
-            )
+            embed.add_field(name="🎯 Roll cible", value=f"**>{pivot}%**", inline=True)
 
-            embed.add_field(
-                name="Roll actuel",
-                value=f"**{current_pct}%**",
-                inline=True
-            )
-            embed.add_field(
-                name="Roll cible pour être meilleure",
-                value=f"**>{target_pct}%**",
-                inline=True
-            )
-
-            embed.set_footer(
-                text="Conseil : ne roll une nouvelle SSR que si tu peux viser plus haut que ta pièce actuelle."
-            )
+            embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
 
             await interaction.response.send_message(embed=embed)
 
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVérifie que la base est un entier et le % un nombre (ex: 9.23).",
+                "❌ **Erreur de saisie**\nVérifie que la base est un entier et le % un nombre (ex: 99.11).",
                 ephemeral=True
             )
         except Exception as e:
@@ -610,5 +594,6 @@ async def comparer(interaction: discord.Interaction):
 # === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
+
 
 
