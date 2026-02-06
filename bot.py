@@ -64,7 +64,7 @@ class StatModal(Modal):
         self.add_item(self.stat_input)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer() # Anti-Timeout
+        await interaction.response.defer()
 
         try:
             valeur = int(self.stat_input.value)
@@ -101,7 +101,6 @@ class PivotView(View):
         super().__init__(timeout=None)
 
     # --- LIGNE 1 : HP (Bleu) ---
-    # CORRECTION : (self, button, interaction)
     @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
     async def ceinture_btn(self, button: Button, interaction: discord.Interaction):
         await interaction.response.send_modal(StatModal("ceinture"))
@@ -135,8 +134,11 @@ async def on_ready():
 
 @bot.command()
 async def calcul(ctx):
-    if ctx.author.bot: return
-embed = discord.Embedembed = discord.Embed(title="Salut <:darius_chokbar:1406639439689814146>  ", description="Tu veux analyser quoi <:darius_chokbar:1406639439689814146> <:darius_chokbar:1406639439689814146>  :")
+    # J'ai nettoyé cette partie pour éviter l'IndentationError
+    if ctx.author.bot:
+        return
+        
+    embed = discord.Embedembed = discord.Embed(title="Salut <:darius_chokbar:1406639439689814146>  ", description="Tu veux analyser quoi <:darius_chokbar:1406639439689814146> <:darius_chokbar:1406639439689814146>  :")
     await ctx.send(embed=embed, view=PivotView())
 
 keep_alive()
