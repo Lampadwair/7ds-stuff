@@ -260,8 +260,8 @@ HTML_TEMPLATE = """
         <div class="command">/calcul • /comparer</div>
 
         <div class="footer">
-            Made with 💜 for Seven Deadly Sins players<br>
-            Version 2.0 • Render Hosting
+            Made with love for The Last Dance<br>
+            Version 2.0 • Lampouille
         </div>
     </div>
 </body>
@@ -606,3 +606,4 @@ async def comparer(interaction: discord.Interaction):
 # === DÉMARRAGE ===
 keep_alive()
 bot.run(TOKEN)
+
