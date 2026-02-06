@@ -225,7 +225,7 @@ class CompareModal(Modal):
                 surplus = round(current_substat_roll - pivot, 2)
                 total_surplus = round(ssr_current_total - r_total)
                 message = (
-                    f"✅ **<:gotosleep:871036926549975112>  Ta pièce bat déjà la R 15% ! <:top1glo:1021142245048594452> **\n\n"
+                    f"✅ **  Ta pièce bat déjà la R 15% ! <:gotosleep:871036926549975112> **\n\n"
                     f"Marge : **+{surplus}%** soit **+{total_surplus:,}** {self.gear_info['type']}"
                 )
                 color = 0x2ecc71
@@ -253,7 +253,7 @@ class CompareModal(Modal):
             if not pivot_result['rentable']:
                 embed.add_field(
                     name="⚠️ Attention",
-                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : <:lul:871036951376068719>  Pièce trop faible  <:dogkek:923909141523734528>   ",
+                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : Pièce trop faible  <:dogkek:923909141523734528>   ",
                     inline=False
                 )
 
@@ -497,6 +497,7 @@ async def comparer(interaction: discord.Interaction):
 if __name__ == "__main__":
     keep_alive()
     bot.run(TOKEN)
+
 
 
 
