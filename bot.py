@@ -21,11 +21,11 @@ GEAR_DATA = {
     "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂", "style": discord.ButtonStyle.success}
 }
 
-MAX_SUBSTAT = 15  # % maximum de substats
+MAX_SUBSTAT = 15
 
 # === FONCTIONS DE CALCUL ===
 def calculate_pivot_old(gear_key, base_stat):
-    """Ancien calcul pivot (SSR vs R) - DEPRECATED"""
+    """Ancien calcul pivot (SSR vs R)"""
     data = GEAR_DATA[gear_key]
     if base_stat == 0:
         return 0
@@ -34,36 +34,14 @@ def calculate_pivot_old(gear_key, base_stat):
     return round(pivot, 2)
 
 def calculate_pivot_7ds(gear_key, pct_stat_ssr, base_stat):
-    """
-    Calcule le % de substats nécessaire pour qu'une pièce SSR batte une R 15% maxée.
-    
-    Système 7DS :
-    - Stat totale = Base + Stat_pièce + (Base × Substats%)
-    - Les substats % s'appliquent sur la BASE du personnage
-    
-    Returns:
-        dict: {
-            'pivot': % de substats requis,
-            'ssr_piece_stat': stat apportée par la pièce SSR,
-            'r_total': stat totale de la R maxée,
-            'ssr_total_au_pivot': stat totale de la SSR au pivot,
-            'rentable': True si pivot <= 15%
-        }
-    """
+    """Calcule le % de substats nécessaire pour qu'une pièce SSR batte une R 15% maxée"""
     gear_info = GEAR_DATA[gear_key]
     ssr_max = gear_info['ssr']
     r_stat = gear_info['r']
     
-    # Stat totale de la R 15% maxée
     r_total = base_stat + r_stat + (base_stat * MAX_SUBSTAT / 100)
-    
-    # Stat de la pièce SSR à X%
     ssr_piece_stat = ssr_max * (pct_stat_ssr / 100)
-    
-    # Calcul du pivot : base + ssr_piece + (base × pivot/100) = r_total
     pivot = ((r_total - base_stat - ssr_piece_stat) / base_stat) * 100
-    
-    # Stat totale de la SSR au pivot
     ssr_total_au_pivot = base_stat + ssr_piece_stat + (base_stat * pivot / 100)
     
     return {
@@ -77,97 +55,115 @@ def calculate_pivot_7ds(gear_key, pct_stat_ssr, base_stat):
 def get_verdict_message(pivot, gear_name):
     """Génère le message de verdict selon le pivot"""
     if pivot > 13.5:
-        return (
-            f"⚠️ **Roll élevé nécessaire - Va farm gold**\n\n"
-            f"Pour **{gear_name}** :\n"
-            f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
-            f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
-            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR >{pivot}%.*"
-        )
+        return f"⚠️ **Roll élevé nécessaire**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
     elif pivot < 10:
-        return (
-            f"✅ **Roll faible - Va farm enclumes**\n\n"
-            f"Pour **{gear_name}** :\n"
-            f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
-            f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
-            f"💡 *Recommandation : Mettez du SSR sans hésiter, roll à {pivot}%.*"
-        )
+        return f"✅ **Roll faible**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
     else:
-        return (
-            f"⚖️ **Roll Moyen - SSR ou R selon vos ressources**\n\n"
-            f"Pour **{gear_name}** :\n"
-            f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
-            f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
-            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR >{pivot}%.*"
-        )
+        return f"⚖️ **Roll Moyen**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
 
 # === MODALS ===
 class StatModal(Modal):
-    def __init__(self, gear_key):
+    def __init__(self, gear_key, original_message):
         super().__init__(title=f"Calcul {gear_key.capitalize()}")
         self.gear_key = gear_key
         self.gear_info = GEAR_DATA[gear_key]
+        self.original_message = original_message
         
-        self.stat_input = TextInput(
-            label=f"Base {self.gear_info['type']} (Sans Stuff)",
-            placeholder="Renseigner la stat noire du perso - la verte",
+        self.stat_noire_input = TextInput(
+            label=f"{self.gear_info['type']} affiché (noir)",
+            placeholder="Ex: 207152 (stats noires affichées dans le jeu)",
             min_length=2,
             max_length=8,
             required=True
         )
-        self.add_item(self.stat_input)
+        self.add_item(self.stat_noire_input)
+        
+        self.stat_verte_input = TextInput(
+            label=f"{self.gear_info['type']} bonus (vert)",
+            placeholder="Ex: 90182 (stats vertes = bonus équipement)",
+            min_length=1,
+            max_length=8,
+            required=True
+        )
+        self.add_item(self.stat_verte_input)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            valeur = int(self.stat_input.value)
-            pivot = calculate_pivot_old(self.gear_key, valeur)
+            stat_noire = int(self.stat_noire_input.value)
+            stat_verte = int(self.stat_verte_input.value)
+            base_stat = stat_noire - stat_verte
+            
+            if base_stat <= 0:
+                await interaction.response.send_message(
+                    "❌ **Erreur** : Les stats noires doivent être supérieures aux stats vertes",
+                    ephemeral=True
+                )
+                return
+            
+            pivot = calculate_pivot_old(self.gear_key, base_stat)
             verdict = get_verdict_message(pivot, self.gear_key.capitalize())
             
             color = 0xe74c3c if pivot > 13.5 else 0x2ecc71 if pivot < 10 else 0xf1c40f
             
             embed = discord.Embed(
-                title="📊 Résultat de l'Analyse",
+                title=f"📊 {self.gear_key.capitalize()} - Pivot {pivot}%",
                 description=verdict,
                 color=color
             )
-            embed.add_field(name="Gear", value=self.gear_key.capitalize(), inline=True)
-            embed.add_field(name="Stat de base", value=f"{valeur:,}", inline=True)
-            embed.add_field(name="🎯 % Pivot", value=f"**{pivot}%**", inline=True)
-            embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
+            embed.add_field(name="Stats noires", value=f"{stat_noire:,}", inline=True)
+            embed.add_field(name="Stats vertes", value=f"{stat_verte:,}", inline=True)
+            embed.add_field(name="Base calculée", value=f"{base_stat:,}", inline=True)
+            embed.set_footer(text="Lampa Calculator • Consultez le guide pour plus d'infos")
 
             await interaction.response.send_message(embed=embed)
             
+            # Supprimer le message original avec les boutons
+            try:
+                await self.original_message.delete()
+            except:
+                pass
+            
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVeuillez entrer un nombre entier valide (ex: 126000).",
+                "❌ **Erreur** : Nombres entiers requis",
                 ephemeral=True
             )
         except Exception as e:
             print(f"[ERREUR MODAL] {e}", flush=True)
             traceback.print_exc()
             await interaction.response.send_message(
-                f"❌ Une erreur interne s'est produite : {e}",
+                f"❌ Erreur : {e}",
                 ephemeral=True
             )
 
 class CompareModal(Modal):
-    def __init__(self, gear_key):
+    def __init__(self, gear_key, original_message):
         super().__init__(title=f"Combien il te manque - {gear_key.capitalize()}")
         self.gear_key = gear_key
         self.gear_info = GEAR_DATA[gear_key]
+        self.original_message = original_message
         
-        self.base_input = TextInput(
-            label=f"Base {self.gear_info['type']} (Sans Stuff)",
-            placeholder="Stat de base du perso (ex: 150000)",
+        self.stat_noire_input = TextInput(
+            label=f"{self.gear_info['type']} affiché (noir)",
+            placeholder="Ex: 207152 (stats noires affichées)",
             min_length=2,
             max_length=8,
             required=True
         )
-        self.add_item(self.base_input)
+        self.add_item(self.stat_noire_input)
+        
+        self.stat_verte_input = TextInput(
+            label=f"{self.gear_info['type']} bonus (vert)",
+            placeholder="Ex: 90182 (stats vertes = bonus équipement)",
+            min_length=1,
+            max_length=8,
+            required=True
+        )
+        self.add_item(self.stat_verte_input)
 
         self.piece_stat_pct_input = TextInput(
             label=f"% de la stat de base de ta pièce SSR",
-            placeholder="Ex: 50 (si ta pièce = 6200 HP et max = 12400)",
+            placeholder="Ex: 50 (si pièce = 6200/12400)",
             min_length=1,
             max_length=6,
             required=True
@@ -175,8 +171,8 @@ class CompareModal(Modal):
         self.add_item(self.piece_stat_pct_input)
 
         self.current_substat_roll_input = TextInput(
-            label=f"% de roll substats actuel",
-            placeholder="Ex: 3 (substats actuels sur ta pièce)",
+            label=f"% de substats actuel",
+            placeholder="Ex: 3",
             min_length=1,
             max_length=5,
             required=True
@@ -185,26 +181,33 @@ class CompareModal(Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            base_stat = int(self.base_input.value)
+            stat_noire = int(self.stat_noire_input.value)
+            stat_verte = int(self.stat_verte_input.value)
+            base_stat = stat_noire - stat_verte
             piece_stat_pct = float(self.piece_stat_pct_input.value.replace(",", "."))
             current_substat_roll = float(self.current_substat_roll_input.value.replace(",", "."))
 
-            # Validations
+            if base_stat <= 0:
+                await interaction.response.send_message(
+                    "❌ **Erreur** : Les stats noires doivent être supérieures aux stats vertes",
+                    ephemeral=True
+                )
+                return
+
             if not 0 <= piece_stat_pct <= 100:
                 await interaction.response.send_message(
-                    "❌ Le % de la stat de la pièce doit être entre 0 et 100%.",
+                    "❌ Le % de la stat doit être entre 0 et 100%",
                     ephemeral=True
                 )
                 return
 
             if not 0 <= current_substat_roll <= MAX_SUBSTAT:
                 await interaction.response.send_message(
-                    f"❌ Le % de roll substat doit être entre 0 et {MAX_SUBSTAT}%.",
+                    f"❌ Les substats doivent être entre 0 et {MAX_SUBSTAT}%",
                     ephemeral=True
                 )
                 return
 
-            # Calcul du pivot avec la nouvelle fonction
             pivot_result = calculate_pivot_7ds(
                 gear_key=self.gear_key,
                 pct_stat_ssr=piece_stat_pct,
@@ -215,94 +218,69 @@ class CompareModal(Modal):
             ssr_piece_stat = round(pivot_result['ssr_piece_stat'])
             r_total = round(pivot_result['r_total'])
             
-            # Stats actuelles
             ssr_current_substat_value = base_stat * current_substat_roll / 100
             ssr_current_total = base_stat + ssr_piece_stat + ssr_current_substat_value
             
-            # Verdict
             if current_substat_roll >= pivot:
                 surplus = round(current_substat_roll - pivot, 2)
                 total_surplus = round(ssr_current_total - r_total)
                 message = (
-                    f"✅ **Ta pièce SSR bat déjà une R 15% maxée !**\n\n"
-                    f"Tu as **+{surplus}%** de marge en substats.\n"
-                    f"Soit **+{total_surplus:,}** {self.gear_info['type']} de surplus."
+                    f"✅ **Ta pièce bat déjà la R 15% !**\n\n"
+                    f"Marge : **+{surplus}%** soit **+{total_surplus:,}** {self.gear_info['type']}"
                 )
                 color = 0x2ecc71
-                missing = 0
             else:
                 missing = round(pivot - current_substat_roll, 2)
                 stat_manquante = round(r_total - ssr_current_total)
                 message = (
-                    f"🎯 **Il te faut {missing}% de roll substats supplémentaires**\n\n"
-                    f"pour battre une R 15% maxée.\n"
-                    f"Il te manque **{stat_manquante:,}** {self.gear_info['type']}."
+                    f"🎯 **Objectif : {pivot}% de substats TOTAL**\n\n"
+                    f"Actuellement : **{current_substat_roll}%**\n"
+                    f"Reste à roller : **+{missing}%**\n"
+                    f"Manque : **{stat_manquante:,}** {self.gear_info['type']}"
                 )
                 color = 0xe74c3c
 
             embed = discord.Embed(
-                title="⚖️ Comparaison SSR vs R 15%",
+                title=f"⚖️ {self.gear_key.capitalize()} - SSR vs R 15%",
                 description=message,
                 color=color
             )
+            
+            embed.add_field(name="Stats noires", value=f"{stat_noire:,}", inline=True)
+            embed.add_field(name="Stats vertes", value=f"{stat_verte:,}", inline=True)
+            embed.add_field(name="Base calculée", value=f"{base_stat:,}", inline=True)
 
-            # Stats actuelles
-            embed.add_field(
-                name="📊 Stats actuelles",
-                value=(
-                    f"```\n"
-                    f"Base : {base_stat:,}\n"
-                    f"Pièce SSR : +{ssr_piece_stat:,} ({piece_stat_pct}%)\n"
-                    f"Substats : +{round(ssr_current_substat_value):,} ({current_substat_roll}%)\n"
-                    f"{'─' * 20}\n"
-                    f"Total : {round(ssr_current_total):,}\n"
-                    f"```"
-                ),
-                inline=False
-            )
-
-            # Objectif
-            embed.add_field(
-                name="🎯 Objectif (R 15% maxée)",
-                value=(
-                    f"```\n"
-                    f"Total R : {r_total:,}\n"
-                    f"Pivot SSR : {pivot}% substats\n"
-                    f"À roller : {missing}%\n"
-                    f"```"
-                ),
-                inline=False
-            )
-
-            # Avertissement si non rentable
             if not pivot_result['rentable']:
                 embed.add_field(
                     name="⚠️ Attention",
-                    value=(
-                        f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}%.\n"
-                        f"Ta pièce est trop faible pour battre une R 15% maxée."
-                    ),
+                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : pièce trop faible",
                     inline=False
                 )
 
-            embed.set_footer(text="Lampa Calculator • Les substats s'appliquent sur la BASE du perso")
+            embed.set_footer(text="Lampa Calculator • Consultez le guide pour plus d'infos")
 
             await interaction.response.send_message(embed=embed)
+            
+            # Supprimer le message original avec les boutons
+            try:
+                await self.original_message.delete()
+            except:
+                pass
 
         except ValueError:
             await interaction.response.send_message(
-                "❌ **Erreur de saisie**\nVérifie les formats (base = entier, % = nombres).",
+                "❌ **Erreur** : Formats invalides",
                 ephemeral=True
             )
         except Exception as e:
             print(f"[ERREUR COMPARE] {e}", flush=True)
             traceback.print_exc()
             await interaction.response.send_message(
-                f"❌ Une erreur interne s'est produite : {e}",
+                f"❌ Erreur : {e}",
                 ephemeral=True
             )
 
-# === VUES OPTIMISÉES ===
+# === VUES ===
 def create_gear_view(modal_class):
     """Factory pour créer des views avec tous les boutons gear"""
     class GearView(View):
@@ -318,7 +296,7 @@ def create_gear_view(modal_class):
                 )
                 
                 async def callback(interaction: discord.Interaction, key=gear_key):
-                    await interaction.response.send_modal(modal_class(key))
+                    await interaction.response.send_modal(modal_class(key, interaction.message))
                 
                 button.callback = callback
                 self.add_item(button)
@@ -338,8 +316,6 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lampa Calculator - 7DS Bot</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -355,7 +331,7 @@ HTML_TEMPLATE = """
         }
         .bg-shapes { position: absolute; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
         .shape { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s infinite ease-in-out; }
-        .shape1 { width: 400px; height: 400px; background: #ff6b6b; top: -100px; left: -100px; animation-delay: 0s; }
+        .shape1 { width: 400px; height: 400px; background: #ff6b6b; top: -100px; left: -100px; }
         .shape2 { width: 350px; height: 350px; background: #4ecdc4; bottom: -100px; right: -100px; animation-delay: 5s; }
         .shape3 { width: 300px; height: 300px; background: #ffe66d; top: 50%; left: 50%; animation-delay: 10s; }
         @keyframes float {
@@ -391,10 +367,7 @@ HTML_TEMPLATE = """
             margin-bottom: 20px;
             animation: pulse 2s infinite;
         }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         .status-dot {
             width: 12px;
             height: 12px;
@@ -403,10 +376,7 @@ HTML_TEMPLATE = """
             box-shadow: 0 0 15px #4caf50;
             animation: blink 1.5s infinite;
         }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         .status-text { color: #fff; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
         h1 { color: #fff; font-size: 48px; font-weight: 700; margin-bottom: 10px; text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
         .subtitle { color: rgba(255, 255, 255, 0.8); font-size: 18px; margin-bottom: 30px; font-weight: 300; }
@@ -506,8 +476,8 @@ async def on_ready():
 @tree.command(name="calcul", description="🧮 Calculer le pivot optimal pour une pièce d'équipement")
 async def calcul(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="% Gear Roll Calculator <:LOVE:871036790021169213>",
-        description="Sélectionnez le type de pièce d'équipement que vous souhaitez analyser :",
+        title="🧮 Gear Roll Calculator",
+        description="Sélectionnez le type d'équipement à analyser :",
         color=0x3498db
     )
     embed.set_footer(text="Cliquez sur un bouton pour commencer")
@@ -517,11 +487,7 @@ async def calcul(interaction: discord.Interaction):
 async def comparer(interaction: discord.Interaction):
     embed = discord.Embed(
         title="⚖️ Calculateur de roll SSR",
-        description=(
-            "Choisis le type d'équipement.\n"
-            "Le bot te dira à quel **% de roll** une nouvelle pièce SSR doit monter\n"
-            "pour être plus forte qu'une R 15% maxée."
-        ),
+        description="Choisissez le type d'équipement à comparer :",
         color=0x9b59b6
     )
     embed.set_footer(text="Cliquez sur un bouton pour commencer")
