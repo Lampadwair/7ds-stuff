@@ -7,319 +7,87 @@ from dotenv import load_dotenv
 from flask import Flask, render_template_string
 from threading import Thread
 
-# === WEB SERVER STYLÉ ===
-app = Flask('')
-
-# Template HTML avec Glassmorphism 7DS
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lampa Calculator - 7DS Bot</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .bg-shapes {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: 0;
-        }
-
-        .shape {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.4;
-            animation: float 20s infinite ease-in-out;
-        }
-
-        .shape1 {
-            width: 400px;
-            height: 400px;
-            background: #ff6b6b;
-            top: -100px;
-            left: -100px;
-            animation-delay: 0s;
-        }
-
-        .shape2 {
-            width: 350px;
-            height: 350px;
-            background: #4ecdc4;
-            bottom: -100px;
-            right: -100px;
-            animation-delay: 5s;
-        }
-
-        .shape3 {
-            width: 300px;
-            height: 300px;
-            background: #ffe66d;
-            top: 50%;
-            left: 50%;
-            animation-delay: 10s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(50px, -50px) scale(1.1); }
-            66% { transform: translate(-50px, 50px) scale(0.9); }
-        }
-
-        .container {
-            position: relative;
-            z-index: 1;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            padding: 60px 50px;
-            text-align: center;
-            max-width: 500px;
-            animation: slideIn 0.8s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.4);
-            padding: 8px 20px;
-            border-radius: 50px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            background: #4caf50;
-            border-radius: 50%;
-            box-shadow: 0 0 15px #4caf50;
-            animation: blink 1.5s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        .status-text {
-            color: #fff;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        h1 {
-            color: #fff;
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        .subtitle {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 18px;
-            margin-bottom: 30px;
-            font-weight: 300;
-        }
-
-        .features {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin: 30px 0;
-        }
-
-        .feature {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 15px 20px;
-            border-radius: 15px;
-            color: #fff;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .feature:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(5px);
-        }
-
-        .feature-icon {
-            font-size: 24px;
-        }
-
-        .command {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 20px;
-            border-radius: 10px;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            margin-top: 20px;
-            display: inline-block;
-        }
-
-        .footer {
-            margin-top: 30px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-        }
-
-        @media (max-width: 600px) {
-            .container {
-                padding: 40px 30px;
-                margin: 20px;
-            }
-            h1 { font-size: 36px; }
-            .subtitle { font-size: 16px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="bg-shapes">
-        <div class="shape shape1"></div>
-        <div class="shape shape2"></div>
-        <div class="shape shape3"></div>
-    </div>
-
-    <div class="container">
-        <div class="status-badge">
-            <div class="status-dot"></div>
-            <span class="status-text">Bot en ligne</span>
-        </div>
-
-        <h1>🧮 Lampa Calculator</h1>
-        <p class="subtitle">Calculateur d'optimisation Gear pour 7DS</p>
-
-        <div class="features">
-            <div class="feature">
-                <span class="feature-icon">⚡</span>
-                <span>Calculs de pivot en temps réel</span>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">🎯</span>
-                <span>6 types d'équipements analysables</span>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">📊</span>
-                <span>Comparateur de pièces SSR</span>
-            </div>
-            <div class="feature">
-                <span class="feature-icon">🔒</span>
-                <span>100% gratuit et sécurisé</span>
-            </div>
-        </div>
-
-        <p style="color: rgba(255,255,255,0.8); margin-top: 30px; font-size: 14px;">
-            Commandes disponibles :
-        </p>
-        <div class="command">/calcul • /comparer</div>
-
-        <div class="footer">
-            Made with love for The Last Dance<br>
-            Version 2.0 • Lampouille
-        </div>
-    </div>
-</body>
-</html>
-"""
-
-@app.route('/')
-def home():
-    return render_template_string(HTML_TEMPLATE)
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
 # === CONFIGURATION ===
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-intents = discord.Intents.default()
-intents.message_content = True
-
-bot = discord.Client(intents=intents)
-tree = app_commands.CommandTree(bot)
-
 # === DONNÉES 7DS ===
 GEAR_DATA = {
-    "ceinture": {"flat_r": 5400, "flat_ssr": 12400, "type": "HP"},
-    "orbe":     {"flat_r": 2900, "flat_ssr": 5800,  "type": "HP"},
-    "bracelet": {"flat_r": 540,  "flat_ssr": 1240,  "type": "ATK"},
-    "bague":    {"flat_r": 290,  "flat_ssr": 640,   "type": "ATK"},
-    "collier":  {"flat_r": 300,  "flat_ssr": 560,   "type": "DEF"},
-    "boucles":  {"flat_r": 160,  "flat_ssr": 320,   "type": "DEF"}
+    "ceinture": {"ssr": 12400, "r": 5400, "type": "HP", "emoji": "🥋", "style": discord.ButtonStyle.primary},
+    "orbe":     {"ssr": 5800,  "r": 2900, "type": "HP", "emoji": "🔮", "style": discord.ButtonStyle.primary},
+    "bracelet": {"ssr": 1240,  "r": 540,  "type": "ATK", "emoji": "🥊", "style": discord.ButtonStyle.danger},
+    "bague":    {"ssr": 640,   "r": 290,  "type": "ATK", "emoji": "💍", "style": discord.ButtonStyle.danger},
+    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿", "style": discord.ButtonStyle.success},
+    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂", "style": discord.ButtonStyle.success}
 }
 
-def calculate_pivot(gear_key, base_stat):
+MAX_SUBSTAT = 15  # % maximum de substats
+
+# === FONCTIONS DE CALCUL ===
+def calculate_pivot_old(gear_key, base_stat):
+    """Ancien calcul pivot (SSR vs R) - DEPRECATED"""
     data = GEAR_DATA[gear_key]
-    delta = data["flat_ssr"] - data["flat_r"]
     if base_stat == 0:
         return 0
-    pivot = 15 - (delta / float(base_stat) * 100)
+    delta = data["ssr"] - data["r"]
+    pivot = MAX_SUBSTAT - (delta / float(base_stat) * 100)
     return round(pivot, 2)
 
+def calculate_pivot_7ds(gear_key, pct_stat_ssr, base_stat):
+    """
+    Calcule le % de substats nécessaire pour qu'une pièce SSR batte une R 15% maxée.
+    
+    Système 7DS :
+    - Stat totale = Base + Stat_pièce + (Base × Substats%)
+    - Les substats % s'appliquent sur la BASE du personnage
+    
+    Returns:
+        dict: {
+            'pivot': % de substats requis,
+            'ssr_piece_stat': stat apportée par la pièce SSR,
+            'r_total': stat totale de la R maxée,
+            'ssr_total_au_pivot': stat totale de la SSR au pivot,
+            'rentable': True si pivot <= 15%
+        }
+    """
+    gear_info = GEAR_DATA[gear_key]
+    ssr_max = gear_info['ssr']
+    r_stat = gear_info['r']
+    
+    # Stat totale de la R 15% maxée
+    r_total = base_stat + r_stat + (base_stat * MAX_SUBSTAT / 100)
+    
+    # Stat de la pièce SSR à X%
+    ssr_piece_stat = ssr_max * (pct_stat_ssr / 100)
+    
+    # Calcul du pivot : base + ssr_piece + (base × pivot/100) = r_total
+    pivot = ((r_total - base_stat - ssr_piece_stat) / base_stat) * 100
+    
+    # Stat totale de la SSR au pivot
+    ssr_total_au_pivot = base_stat + ssr_piece_stat + (base_stat * pivot / 100)
+    
+    return {
+        'pivot': round(pivot, 2),
+        'ssr_piece_stat': ssr_piece_stat,
+        'r_total': r_total,
+        'ssr_total_au_pivot': ssr_total_au_pivot,
+        'rentable': pivot <= MAX_SUBSTAT
+    }
+
 def get_verdict_message(pivot, gear_name):
+    """Génère le message de verdict selon le pivot"""
     if pivot > 13.5:
         return (
-            f"⚠️ **Roll élevé nécéssaire - Va farm gold**\n\n"
-            f"Pour : **{gear_name}**, :\n"
+            f"⚠️ **Roll élevé nécessaire - Va farm gold**\n\n"
+            f"Pour **{gear_name}** :\n"
             f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
             f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
-            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR>{pivot}%.*\n\n"
+            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR >{pivot}%.*"
         )
     elif pivot < 10:
         return (
             f"✅ **Roll faible - Va farm enclumes**\n\n"
-            f"Pour : **{gear_name}**, :\n"
+            f"Pour **{gear_name}** :\n"
             f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
             f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
             f"💡 *Recommandation : Mettez du SSR sans hésiter, roll à {pivot}%.*"
@@ -327,33 +95,13 @@ def get_verdict_message(pivot, gear_name):
     else:
         return (
             f"⚖️ **Roll Moyen - SSR ou R selon vos ressources**\n\n"
-            f"Pour : **{gear_name}**, :\n"
+            f"Pour **{gear_name}** :\n"
             f"Une pièce **SSR avec >{pivot}%** doit être équipée\n"
             f"pour gagner plus de CC qu'une pièce **R 15% maxée**\n\n"
-            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR>{pivot}%.*\n\n"
+            f"💡 *Recommandation : Gardez votre R 15% si vous n'avez pas un SSR >{pivot}%.*"
         )
 
-# --- Comparateur : calcule le % cible pour battre la SSR actuelle ---
-def required_percent_to_beat_current(gear_key, base_stat, current_gear_stat):
-    """
-    base_stat = stat du perso sans stuff
-    current_gear_stat = stat du perso avec la pièce SSR actuelle équipée
-    On en déduit le % actuel, puis on donne le % minimum pour qu'une nouvelle SSR soit plus forte.
-    """
-    data = GEAR_DATA[gear_key]
-    max_ssr = data["flat_ssr"]
-
-    gain_actuel = current_gear_stat - base_stat
-    if gain_actuel <= 0:
-        return 0.0, 0.0  # cas degueu
-
-    percent_actuel = gain_actuel / max_ssr * 100
-    # On veut strictement mieux que la pièce actuelle → +0.1%
-    percent_cible = round(percent_actuel + 0.1, 2)
-
-    return round(percent_actuel, 2), percent_cible
-
-# === MODAL PIVOT ===
+# === MODALS ===
 class StatModal(Modal):
     def __init__(self, gear_key):
         super().__init__(title=f"Calcul {gear_key.capitalize()}")
@@ -372,22 +120,17 @@ class StatModal(Modal):
     async def on_submit(self, interaction: discord.Interaction):
         try:
             valeur = int(self.stat_input.value)
-            pivot = calculate_pivot(self.gear_key, valeur)
+            pivot = calculate_pivot_old(self.gear_key, valeur)
             verdict = get_verdict_message(pivot, self.gear_key.capitalize())
             
-            if pivot > 13.5:
-                color = 0xe74c3c
-            elif pivot < 10:
-                color = 0x2ecc71
-            else:
-                color = 0xf1c40f
+            color = 0xe74c3c if pivot > 13.5 else 0x2ecc71 if pivot < 10 else 0xf1c40f
             
             embed = discord.Embed(
                 title="📊 Résultat de l'Analyse",
                 description=verdict,
                 color=color
             )
-            embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
+            embed.add_field(name="Gear", value=self.gear_key.capitalize(), inline=True)
             embed.add_field(name="Stat de base", value=f"{valeur:,}", inline=True)
             embed.add_field(name="🎯 % Pivot", value=f"**{pivot}%**", inline=True)
             embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
@@ -402,15 +145,11 @@ class StatModal(Modal):
         except Exception as e:
             print(f"[ERREUR MODAL] {e}", flush=True)
             traceback.print_exc()
-            try:
-                await interaction.response.send_message(
-                    f"❌ Une erreur interne s'est produite : {e}",
-                    ephemeral=True
-                )
-            except:
-                pass
+            await interaction.response.send_message(
+                f"❌ Une erreur interne s'est produite : {e}",
+                ephemeral=True
+            )
 
-# === MODAL COMPARE (base + stat gear actuelle) ===
 class CompareModal(Modal):
     def __init__(self, gear_key):
         super().__init__(title=f"Combien il te manque - {gear_key.capitalize()}")
@@ -419,7 +158,7 @@ class CompareModal(Modal):
         
         self.base_input = TextInput(
             label=f"Base {self.gear_info['type']} (Sans Stuff)",
-            placeholder="Stat noire du perso (ex: 150000)",
+            placeholder="Stat de base du perso (ex: 150000)",
             min_length=2,
             max_length=8,
             required=True
@@ -427,8 +166,8 @@ class CompareModal(Modal):
         self.add_item(self.base_input)
 
         self.piece_stat_pct_input = TextInput(
-            label=f"% de la stat de la pièce",
-            placeholder="Ex: 50 (si pièce = 6200 HP sur 12400 max)",
+            label=f"% de la stat de base de ta pièce SSR",
+            placeholder="Ex: 50 (si ta pièce = 6200 HP et max = 12400)",
             min_length=1,
             max_length=6,
             required=True
@@ -436,8 +175,8 @@ class CompareModal(Modal):
         self.add_item(self.piece_stat_pct_input)
 
         self.current_substat_roll_input = TextInput(
-            label=f"% de roll substat actuel sur la pièce",
-            placeholder="Ex: 0 (si pas encore rollé) ou 7.5",
+            label=f"% de roll substats actuel",
+            placeholder="Ex: 3 (substats actuels sur ta pièce)",
             min_length=1,
             max_length=5,
             required=True
@@ -450,6 +189,7 @@ class CompareModal(Modal):
             piece_stat_pct = float(self.piece_stat_pct_input.value.replace(",", "."))
             current_substat_roll = float(self.current_substat_roll_input.value.replace(",", "."))
 
+            # Validations
             if not 0 <= piece_stat_pct <= 100:
                 await interaction.response.send_message(
                     "❌ Le % de la stat de la pièce doit être entre 0 et 100%.",
@@ -457,42 +197,95 @@ class CompareModal(Modal):
                 )
                 return
 
-            if not 0 <= current_substat_roll <= 15:
+            if not 0 <= current_substat_roll <= MAX_SUBSTAT:
                 await interaction.response.send_message(
-                    "❌ Le % de roll substat doit être entre 0 et 15%.",
+                    f"❌ Le % de roll substat doit être entre 0 et {MAX_SUBSTAT}%.",
                     ephemeral=True
                 )
                 return
 
-            # Calcul du PIVOT
-            pivot = calculate_pivot(self.gear_key, base_stat)
+            # Calcul du pivot avec la nouvelle fonction
+            pivot_result = calculate_pivot_7ds(
+                gear_key=self.gear_key,
+                pct_stat_ssr=piece_stat_pct,
+                base_stat=base_stat
+            )
             
-            # Calcul de ce qu'il manque
+            pivot = pivot_result['pivot']
+            ssr_piece_stat = round(pivot_result['ssr_piece_stat'])
+            r_total = round(pivot_result['r_total'])
+            
+            # Stats actuelles
+            ssr_current_substat_value = base_stat * current_substat_roll / 100
+            ssr_current_total = base_stat + ssr_piece_stat + ssr_current_substat_value
+            
+            # Verdict
             if current_substat_roll >= pivot:
                 surplus = round(current_substat_roll - pivot, 2)
-                message = f"✅ **Ta pièce bat déjà une R 15% !**\n\nTu as **+{surplus}%** de marge."
+                total_surplus = round(ssr_current_total - r_total)
+                message = (
+                    f"✅ **Ta pièce SSR bat déjà une R 15% maxée !**\n\n"
+                    f"Tu as **+{surplus}%** de marge en substats.\n"
+                    f"Soit **+{total_surplus:,}** {self.gear_info['type']} de surplus."
+                )
                 color = 0x2ecc71
                 missing = 0
             else:
                 missing = round(pivot - current_substat_roll, 2)
-                message = f"🎯 **Il te faut {missing}% de roll substat supplémentaire**\n\npour que ta pièce soit meilleure qu'une R 15% maxée."
+                stat_manquante = round(r_total - ssr_current_total)
+                message = (
+                    f"🎯 **Il te faut {missing}% de roll substats supplémentaires**\n\n"
+                    f"pour battre une R 15% maxée.\n"
+                    f"Il te manque **{stat_manquante:,}** {self.gear_info['type']}."
+                )
                 color = 0xe74c3c
 
             embed = discord.Embed(
-                title="⚖️ Combien il te manque ?",
+                title="⚖️ Comparaison SSR vs R 15%",
                 description=message,
                 color=color
             )
 
-            embed.add_field(name="Gear :", value=self.gear_key.capitalize(), inline=True)
-            embed.add_field(name="Stat de base", value=f"{base_stat:,}", inline=True)
-            embed.add_field(name="📦 Pièce", value=f"{piece_stat_pct}% de stat", inline=True)
-            
-            embed.add_field(name="Roll substat actuel", value=f"{current_substat_roll}%", inline=True)
-            embed.add_field(name="🎯 Roll cible (pivot)", value=f"**{pivot}%**", inline=True)
-            embed.add_field(name="📊 À roll encore", value=f"**{missing}%**", inline=True)
+            # Stats actuelles
+            embed.add_field(
+                name="📊 Stats actuelles",
+                value=(
+                    f"```\n"
+                    f"Base : {base_stat:,}\n"
+                    f"Pièce SSR : +{ssr_piece_stat:,} ({piece_stat_pct}%)\n"
+                    f"Substats : +{round(ssr_current_substat_value):,} ({current_substat_roll}%)\n"
+                    f"{'─' * 20}\n"
+                    f"Total : {round(ssr_current_total):,}\n"
+                    f"```"
+                ),
+                inline=False
+            )
 
-            embed.set_footer(text="Lampa Calculator • 7DS Gear Optimizer")
+            # Objectif
+            embed.add_field(
+                name="🎯 Objectif (R 15% maxée)",
+                value=(
+                    f"```\n"
+                    f"Total R : {r_total:,}\n"
+                    f"Pivot SSR : {pivot}% substats\n"
+                    f"À roller : {missing}%\n"
+                    f"```"
+                ),
+                inline=False
+            )
+
+            # Avertissement si non rentable
+            if not pivot_result['rentable']:
+                embed.add_field(
+                    name="⚠️ Attention",
+                    value=(
+                        f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}%.\n"
+                        f"Ta pièce est trop faible pour battre une R 15% maxée."
+                    ),
+                    inline=False
+                )
+
+            embed.set_footer(text="Lampa Calculator • Les substats s'appliquent sur la BASE du perso")
 
             await interaction.response.send_message(embed=embed)
 
@@ -504,72 +297,197 @@ class CompareModal(Modal):
         except Exception as e:
             print(f"[ERREUR COMPARE] {e}", flush=True)
             traceback.print_exc()
-            try:
-                await interaction.response.send_message(
-                    f"❌ Une erreur interne s'est produite : {e}",
-                    ephemeral=True
+            await interaction.response.send_message(
+                f"❌ Une erreur interne s'est produite : {e}",
+                ephemeral=True
+            )
+
+# === VUES OPTIMISÉES ===
+def create_gear_view(modal_class):
+    """Factory pour créer des views avec tous les boutons gear"""
+    class GearView(View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            for row_idx, (gear_key, gear_data) in enumerate(GEAR_DATA.items()):
+                button = Button(
+                    label=f"{gear_key.capitalize()} ({gear_data['type']})",
+                    style=gear_data['style'],
+                    emoji=gear_data['emoji'],
+                    custom_id=f"{modal_class.__name__}_{gear_key}",
+                    row=row_idx // 2
                 )
-            except:
-                pass
+                
+                async def callback(interaction: discord.Interaction, key=gear_key):
+                    await interaction.response.send_modal(modal_class(key))
+                
+                button.callback = callback
+                self.add_item(button)
+    
+    return GearView
 
-# === VUES ===
-class PivotView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
+PivotView = create_gear_view(StatModal)
+CompareView = create_gear_view(CompareModal)
 
-    @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
-    async def ceinture_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("ceinture"))
+# === WEB SERVER ===
+app = Flask('')
 
-    @discord.ui.button(label="Orbe (HP)", style=discord.ButtonStyle.primary, emoji="🔮", row=0)
-    async def orbe_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("orbe"))
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lampa Calculator - 7DS Bot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+        .bg-shapes { position: absolute; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
+        .shape { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s infinite ease-in-out; }
+        .shape1 { width: 400px; height: 400px; background: #ff6b6b; top: -100px; left: -100px; animation-delay: 0s; }
+        .shape2 { width: 350px; height: 350px; background: #4ecdc4; bottom: -100px; right: -100px; animation-delay: 5s; }
+        .shape3 { width: 300px; height: 300px; background: #ffe66d; top: 50%; left: 50%; animation-delay: 10s; }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -50px) scale(1.1); }
+            66% { transform: translate(-50px, 50px) scale(0.9); }
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            padding: 60px 50px;
+            text-align: center;
+            max-width: 500px;
+            animation: slideIn 0.8s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            padding: 8px 20px;
+            border-radius: 50px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: #4caf50;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #4caf50;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .status-text { color: #fff; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        h1 { color: #fff; font-size: 48px; font-weight: 700; margin-bottom: 10px; text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
+        .subtitle { color: rgba(255, 255, 255, 0.8); font-size: 18px; margin-bottom: 30px; font-weight: 300; }
+        .features { display: flex; flex-direction: column; gap: 15px; margin: 30px 0; }
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        .feature:hover { background: rgba(255, 255, 255, 0.1); transform: translateX(5px); }
+        .feature-icon { font-size: 24px; }
+        .command {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        .footer { margin-top: 30px; color: rgba(255, 255, 255, 0.6); font-size: 14px; }
+        @media (max-width: 600px) {
+            .container { padding: 40px 30px; margin: 20px; }
+            h1 { font-size: 36px; }
+            .subtitle { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-shapes">
+        <div class="shape shape1"></div>
+        <div class="shape shape2"></div>
+        <div class="shape shape3"></div>
+    </div>
+    <div class="container">
+        <div class="status-badge">
+            <div class="status-dot"></div>
+            <span class="status-text">Bot en ligne</span>
+        </div>
+        <h1>🧮 Lampa Calculator</h1>
+        <p class="subtitle">Calculateur d'optimisation Gear pour 7DS</p>
+        <div class="features">
+            <div class="feature"><span class="feature-icon">⚡</span><span>Calculs de pivot en temps réel</span></div>
+            <div class="feature"><span class="feature-icon">🎯</span><span>6 types d'équipements analysables</span></div>
+            <div class="feature"><span class="feature-icon">📊</span><span>Comparateur de pièces SSR</span></div>
+            <div class="feature"><span class="feature-icon">🔒</span><span>100% gratuit et sécurisé</span></div>
+        </div>
+        <p style="color: rgba(255,255,255,0.8); margin-top: 30px; font-size: 14px;">Commandes disponibles :</p>
+        <div class="command">/calcul • /comparer</div>
+        <div class="footer">Made with love for The Last Dance<br>Version 2.0 • Lampouille</div>
+    </div>
+</body>
+</html>
+"""
 
-    @discord.ui.button(label="Bracelet (ATK)", style=discord.ButtonStyle.danger, emoji="🥊", row=1)
-    async def bracelet_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("bracelet"))
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
 
-    @discord.ui.button(label="Bague (ATK)", style=discord.ButtonStyle.danger, emoji="💍", row=1)
-    async def bague_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("bague"))
+def run():
+    app.run(host='0.0.0.0', port=8080)
 
-    @discord.ui.button(label="Collier (DEF)", style=discord.ButtonStyle.success, emoji="📿", row=2)
-    async def collier_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("collier"))
+def keep_alive():
+    Thread(target=run, daemon=True).start()
 
-    @discord.ui.button(label="Boucles (DEF)", style=discord.ButtonStyle.success, emoji="👂", row=2)
-    async def boucles_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(StatModal("boucles"))
+# === BOT DISCORD ===
+intents = discord.Intents.default()
+intents.message_content = True
 
-class CompareView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
+bot = discord.Client(intents=intents)
+tree = app_commands.CommandTree(bot)
 
-    @discord.ui.button(label="Ceinture (HP)", style=discord.ButtonStyle.primary, emoji="🥋", row=0)
-    async def ceinture_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("ceinture"))
-
-    @discord.ui.button(label="Orbe (HP)", style=discord.ButtonStyle.primary, emoji="🔮", row=0)
-    async def orbe_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("orbe"))
-
-    @discord.ui.button(label="Bracelet (ATK)", style=discord.ButtonStyle.danger, emoji="🥊", row=1)
-    async def bracelet_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("bracelet"))
-
-    @discord.ui.button(label="Bague (ATK)", style=discord.ButtonStyle.danger, emoji="💍", row=1)
-    async def bague_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("bague"))
-
-    @discord.ui.button(label="Collier (DEF)", style=discord.ButtonStyle.success, emoji="📿", row=2)
-    async def collier_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("collier"))
-
-    @discord.ui.button(label="Boucles (DEF)", style=discord.ButtonStyle.success, emoji="👂", row=2)
-    async def boucles_btn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(CompareModal("boucles"))
-
-# === ÉVÉNEMENTS ===
 @bot.event
 async def on_ready():
     print("=" * 60, flush=True)
@@ -585,20 +503,15 @@ async def on_ready():
         print(f"❌ Erreur de synchronisation : {e}", flush=True)
         traceback.print_exc()
 
-# === COMMANDES SLASH ===
 @tree.command(name="calcul", description="🧮 Calculer le pivot optimal pour une pièce d'équipement")
 async def calcul(interaction: discord.Interaction):
-    try:
-        embed = discord.Embed(
-            title="% Gear Roll Calculator <:LOVE:871036790021169213> ",
-            description="Sélectionnez le type de pièce d'équipement que vous souhaitez analyser :",
-            color=0x3498db
-        )
-        embed.set_footer(text="Cliquez sur un bouton pour commencer")
-        await interaction.response.send_message(embed=embed, view=PivotView())
-    except Exception as e:
-        print(f"[ERREUR COMMANDE CALCUL] {e}", flush=True)
-        traceback.print_exc()
+    embed = discord.Embed(
+        title="% Gear Roll Calculator <:LOVE:871036790021169213>",
+        description="Sélectionnez le type de pièce d'équipement que vous souhaitez analyser :",
+        color=0x3498db
+    )
+    embed.set_footer(text="Cliquez sur un bouton pour commencer")
+    await interaction.response.send_message(embed=embed, view=PivotView())
 
 @tree.command(name="comparer", description="⚖️ Estimer le roll à viser pour battre du R maxé")
 async def comparer(interaction: discord.Interaction):
@@ -607,7 +520,7 @@ async def comparer(interaction: discord.Interaction):
         description=(
             "Choisis le type d'équipement.\n"
             "Le bot te dira à quel **% de roll** une nouvelle pièce SSR doit monter\n"
-            "pour être plus forte que celle que tu utilises déjà."
+            "pour être plus forte qu'une R 15% maxée."
         ),
         color=0x9b59b6
     )
@@ -615,10 +528,6 @@ async def comparer(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=CompareView())
 
 # === DÉMARRAGE ===
-keep_alive()
-bot.run(TOKEN)
-
-
-
-
-
+if __name__ == "__main__":
+    keep_alive()
+    bot.run(TOKEN)
