@@ -553,70 +553,339 @@ app = Flask(__name__)
 def home():
     return render_template_string('''
     <!DOCTYPE html>
-    <html>
+    <html lang="fr">
     <head>
-        <title>Lampa Calculator</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Lampa Calculator - 7DS Bot</title>
         <style>
-            body { 
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                text-align: center; 
-                padding: 50px; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
+            * {
                 margin: 0;
-            }
-            .container {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 20px;
-                padding: 40px;
-                max-width: 600px;
-                margin: 0 auto;
-                backdrop-filter: blur(10px);
-                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            }
-            h1 { 
-                color: #fff;
-                font-size: 3em;
-                margin-bottom: 10px;
-            }
-            .status {
-                display: inline-block;
-                padding: 8px 20px;
-                background: #2ecc71;
-                border-radius: 20px;
-                font-weight: bold;
-                margin: 20px 0;
-            }
-            ul {
-                list-style: none;
                 padding: 0;
+                box-sizing: border-box;
             }
-            li {
-                background: rgba(255, 255, 255, 0.2);
-                margin: 10px 0;
-                padding: 15px;
-                border-radius: 10px;
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
+                background-size: 400% 400%;
+                animation: gradientShift 15s ease infinite;
+                color: white;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow-x: hidden;
+            }
+            
+            @keyframes gradientShift {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            
+            .container {
+                max-width: 900px;
+                width: 90%;
+                padding: 40px;
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(20px);
+                border-radius: 30px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                animation: fadeIn 1s ease;
+            }
+            
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            .header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            
+            .logo {
+                font-size: 4em;
+                animation: bounce 2s ease-in-out infinite;
+                display: inline-block;
+            }
+            
+            @keyframes bounce {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-15px); }
+            }
+            
+            h1 {
+                font-size: 2.5em;
+                margin: 20px 0 10px;
+                background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: textGlow 3s ease-in-out infinite;
+            }
+            
+            @keyframes textGlow {
+                0%, 100% { filter: brightness(1); }
+                50% { filter: brightness(1.3); }
+            }
+            
+            .subtitle {
+                font-size: 1.2em;
+                color: #a0a0a0;
+                margin-bottom: 20px;
+            }
+            
+            .status {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 30px;
+                background: rgba(46, 213, 115, 0.2);
+                border: 2px solid #2ecc71;
+                border-radius: 50px;
+                font-weight: bold;
                 font-size: 1.1em;
+                margin: 20px 0;
+                animation: pulse 2s ease-in-out infinite;
             }
-            .emoji {
-                font-size: 1.5em;
-                margin-right: 10px;
+            
+            @keyframes pulse {
+                0%, 100% {
+                    box-shadow: 0 0 20px rgba(46, 213, 115, 0.4);
+                }
+                50% {
+                    box-shadow: 0 0 40px rgba(46, 213, 115, 0.8);
+                }
+            }
+            
+            .status::before {
+                content: '';
+                width: 12px;
+                height: 12px;
+                background: #2ecc71;
+                border-radius: 50%;
+                animation: blink 1.5s ease-in-out infinite;
+            }
+            
+            @keyframes blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.3; }
+            }
+            
+            .divider {
+                height: 2px;
+                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+                margin: 30px 0;
+            }
+            
+            .commands {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-top: 30px;
+            }
+            
+            .command-card {
+                background: rgba(255, 255, 255, 0.08);
+                padding: 25px;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: all 0.3s ease;
+                cursor: pointer;
+                animation: slideIn 0.6s ease forwards;
+                opacity: 0;
+            }
+            
+            .command-card:nth-child(1) { animation-delay: 0.1s; }
+            .command-card:nth-child(2) { animation-delay: 0.2s; }
+            .command-card:nth-child(3) { animation-delay: 0.3s; }
+            
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateX(-30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+            
+            .command-card:hover {
+                transform: translateY(-10px) scale(1.05);
+                background: rgba(255, 255, 255, 0.15);
+                box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+                border-color: #667eea;
+            }
+            
+            .command-icon {
+                font-size: 3em;
+                margin-bottom: 15px;
+                display: block;
+            }
+            
+            .command-name {
+                font-size: 1.4em;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color: #667eea;
+            }
+            
+            .command-desc {
+                color: #b0b0b0;
+                line-height: 1.5;
+            }
+            
+            .footer {
+                text-align: center;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                color: #808080;
+            }
+            
+            .footer a {
+                color: #667eea;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            }
+            
+            .footer a:hover {
+                color: #f093fb;
+            }
+            
+            /* Responsive */
+            @media (max-width: 768px) {
+                .container {
+                    padding: 30px 20px;
+                }
+                
+                h1 {
+                    font-size: 2em;
+                }
+                
+                .logo {
+                    font-size: 3em;
+                }
+                
+                .commands {
+                    grid-template-columns: 1fr;
+                }
+            }
+            
+            /* Particles background */
+            .particles {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: -1;
+                overflow: hidden;
+            }
+            
+            .particle {
+                position: absolute;
+                background: rgba(255, 255, 255, 0.5);
+                border-radius: 50%;
+                animation: float 20s infinite;
+            }
+            
+            @keyframes float {
+                0%, 100% {
+                    transform: translateY(0) translateX(0);
+                    opacity: 0;
+                }
+                10% {
+                    opacity: 0.5;
+                }
+                90% {
+                    opacity: 0.5;
+                }
+                100% {
+                    transform: translateY(-100vh) translateX(100px);
+                    opacity: 0;
+                }
             }
         </style>
     </head>
     <body>
+        <div class="particles" id="particles"></div>
+        
         <div class="container">
-            <h1>🤖 Lampa Calculator</h1>
-            <p style="font-size: 1.2em;">Bot Discord pour 7DS Grand Cross</p>
-            <div class="status">✅ Online</div>
-            <hr style="border: 1px solid rgba(255,255,255,0.3); margin: 30px 0;">
-            <h3>Commandes disponibles :</h3>
-            <ul>
-                <li><span class="emoji">📊</span> /pivot - Calculer les pivots</li>
-                <li><span class="emoji">🎲</span> /roll - Vérifier mes rolls</li>
-                <li><span class="emoji">❓</span> /help - Guide d'utilisation</li>
-            </ul>
+            <div class="header">
+                <div class="logo">🤖</div>
+                <h1>Lampa Calculator</h1>
+                <p class="subtitle">Bot d'optimisation Box CC pour 7DS Grand Cross</p>
+                <div class="status">
+                    Online
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="commands">
+                <div class="command-card">
+                    <span class="command-icon">📊</span>
+                    <div class="command-name">/pivot</div>
+                    <div class="command-desc">
+                        Calcule les pivots SSR 100% vs R 15% pour tous tes équipements
+                    </div>
+                </div>
+                
+                <div class="command-card">
+                    <span class="command-icon">🎲</span>
+                    <div class="command-name">/roll</div>
+                    <div class="command-desc">
+                        Vérifie tes rolls actuels et combien de % il te manque
+                    </div>
+                </div>
+                
+                <div class="command-card">
+                    <span class="command-icon">❓</span>
+                    <div class="command-name">/help</div>
+                    <div class="command-desc">
+                        Guide complet d'utilisation du bot avec exemples
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Développé par <strong>Lampouille</strong> pour <strong>The Last Dance</strong></p>
+                <p style="margin-top: 10px;">
+                    <a href="https://github.com/Lampadwair/7ds-stuff" target="_blank">📦 GitHub</a>
+                </p>
+            </div>
         </div>
+        
+        <script>
+            // Génère des particules animées
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 5 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 15) + 's';
+                
+                particlesContainer.appendChild(particle);
+            }
+        </script>
     </body>
     </html>
     ''')
@@ -631,3 +900,4 @@ if __name__ == "__main__":
     web_thread.start()
     
     client.run(TOKEN)
+
