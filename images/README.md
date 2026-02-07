@@ -1,0 +1,1 @@
+Images des équipements
