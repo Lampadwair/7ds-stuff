@@ -13,19 +13,66 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 # === DONNÉES 7DS ===
 GEAR_DATA = {
-    "ceinture": {"ssr": 12400, "r": 5400, "type": "HP", "emoji": "🥋", "style": discord.ButtonStyle.primary},
-    "orbe":     {"ssr": 5800,  "r": 2900, "type": "HP", "emoji": "🔮", "style": discord.ButtonStyle.primary},
-    "bracelet": {"ssr": 1240,  "r": 540,  "type": "ATK", "emoji": "🥊", "style": discord.ButtonStyle.danger},
-    "bague":    {"ssr": 640,   "r": 290,  "type": "ATK", "emoji": "💍", "style": discord.ButtonStyle.danger},
-    "collier":  {"ssr": 560,   "r": 300,  "type": "DEF", "emoji": "📿", "style": discord.ButtonStyle.success},
-    "boucles":  {"ssr": 320,   "r": 160,  "type": "DEF", "emoji": "👂", "style": discord.ButtonStyle.success}
+    "ceinture": {
+        "ssr": 12400, 
+        "r": 5400, 
+        "type": "HP", 
+        "emoji": "🛡️", 
+        "color": 0x3498db,
+        "image": "icon_weapon_2_belt.jpg"
+    },
+    "orbe": {
+        "ssr": 5800, 
+        "r": 2900, 
+        "type": "HP", 
+        "emoji": "🔮", 
+        "color": 0x3498db,
+        "image": "icon_weapon_2_rune.jpg"
+    },
+    "bracelet": {
+        "ssr": 1240, 
+        "r": 540, 
+        "type": "ATK", 
+        "emoji": "⚔️", 
+        "color": 0xe74c3c,
+        "image": "icon_weapon_2_bracelet.jpg"
+    },
+    "bague": {
+        "ssr": 640, 
+        "r": 290, 
+        "type": "ATK", 
+        "emoji": "💍", 
+        "color": 0xe74c3c,
+        "image": "icon_weapon_2_ring-1.jpg"
+    },
+    "collier": {
+        "ssr": 560, 
+        "r": 300, 
+        "type": "DEF", 
+        "emoji": "📿", 
+        "color": 0x2ecc71,
+        "image": "icon_weapon_7_amulet.jpg"
+    },
+    "boucles": {
+        "ssr": 320, 
+        "r": 160, 
+        "type": "DEF", 
+        "emoji": "💎", 
+        "color": 0x2ecc71,
+        "image": "icon_weapon_7_earring.jpg"
+    }
 }
 
 MAX_SUBSTAT = 15
 
+# === BOT SETUP ===
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
+
 # === FONCTIONS DE CALCUL ===
 def calculate_pivot_old(gear_key, base_stat):
-    """Ancien calcul pivot (SSR vs R)"""
+    """Calcul pivot SSR 100% vs R 15%"""
     data = GEAR_DATA[gear_key]
     if base_stat == 0:
         return 0
@@ -52,76 +99,139 @@ def calculate_pivot_7ds(gear_key, pct_stat_ssr, base_stat):
         'rentable': pivot <= MAX_SUBSTAT
     }
 
-def get_verdict_message(pivot, gear_name):
-    """Génère le message de verdict selon le pivot"""
-    if pivot > 13.5:
-        return f"⚠️ **Roll élevé nécessaire**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
-    elif pivot < 10:
-        return f"✅ **Roll faible**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
-    else:
-        return f"⚖️ **Roll Moyen**\n\nPour **{gear_name}**, une pièce **SSR avec >{pivot}%** de substats doit être équipée pour gagner plus de CC qu'une **R 15% maxée**."
-
-# === MODALS ===
-class StatModal(Modal):
-    def __init__(self, gear_key, original_message):
-        super().__init__(title=f"Calcul {gear_key.capitalize()}")
-        self.gear_key = gear_key
-        self.gear_info = GEAR_DATA[gear_key]
-        self.original_message = original_message
+# === MODAL POUR /pivot ===
+class PivotModal(Modal):
+    def __init__(self):
+        super().__init__(title="📊 Calcul des Pivots")
         
-        self.stat_noire_input = TextInput(
-            label=f"{self.gear_info['type']} affiché (noir)",
-            placeholder="Ex: 207152 (stats noires affichées dans le jeu)",
+        self.stat_noire_hp = TextInput(
+            label="HP affiché (noir)",
+            placeholder="Ex: 207152",
             min_length=2,
             max_length=8,
             required=True
         )
-        self.add_item(self.stat_noire_input)
+        self.add_item(self.stat_noire_hp)
         
-        self.stat_verte_input = TextInput(
-            label=f"{self.gear_info['type']} bonus (vert)",
-            placeholder="Ex: 90182 (stats vertes = bonus équipement)",
+        self.stat_verte_hp = TextInput(
+            label="HP bonus (vert)",
+            placeholder="Ex: 90182",
             min_length=1,
             max_length=8,
             required=True
         )
-        self.add_item(self.stat_verte_input)
+        self.add_item(self.stat_verte_hp)
+        
+        self.stat_noire_atk = TextInput(
+            label="ATK affiché (noir)",
+            placeholder="Ex: 13836",
+            min_length=2,
+            max_length=8,
+            required=True
+        )
+        self.add_item(self.stat_noire_atk)
+        
+        self.stat_verte_atk = TextInput(
+            label="ATK bonus (vert)",
+            placeholder="Ex: 5581",
+            min_length=1,
+            max_length=8,
+            required=True
+        )
+        self.add_item(self.stat_verte_atk)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            stat_noire = int(self.stat_noire_input.value)
-            stat_verte = int(self.stat_verte_input.value)
-            base_stat = stat_noire - stat_verte
+            # Calcul bases
+            stat_noire_hp = int(self.stat_noire_hp.value)
+            stat_verte_hp = int(self.stat_verte_hp.value)
+            base_hp = stat_noire_hp - stat_verte_hp
             
-            if base_stat <= 0:
+            stat_noire_atk = int(self.stat_noire_atk.value)
+            stat_verte_atk = int(self.stat_verte_atk.value)
+            base_atk = stat_noire_atk - stat_verte_atk
+            
+            # Validation
+            if base_hp <= 0 or base_atk <= 0:
                 await interaction.response.send_message(
                     "❌ **Erreur** : Les stats noires doivent être supérieures aux stats vertes",
                     ephemeral=True
                 )
                 return
             
-            pivot = calculate_pivot_old(self.gear_key, base_stat)
-            verdict = get_verdict_message(pivot, self.gear_key.capitalize())
-            
-            color = 0xe74c3c if pivot > 13.5 else 0x2ecc71 if pivot < 10 else 0xf1c40f
-            
+            # Embed principal
             embed = discord.Embed(
-                title=f"📊 {self.gear_key.capitalize()} - Pivot {pivot}%",
-                description=verdict,
-                color=color
+                title="📊 Pivots SSR 100% vs R 15%",
+                description=(
+                    "**Rolls minimum sur pièces SSR 100% pour battre R 15% maxée**\n\n"
+                    f"📈 **Stats de Base :**\n"
+                    f"🔵 HP : `{base_hp:,}`\n"
+                    f"🔴 ATK : `{base_atk:,}`"
+                ),
+                color=0xf39c12
             )
-            embed.add_field(name="Stats noires", value=f"{stat_noire:,}", inline=True)
-            embed.add_field(name="Stats vertes", value=f"{stat_verte:,}", inline=True)
-            embed.add_field(name="Base calculée", value=f"{base_stat:,}", inline=True)
-            embed.set_footer(text="Lampa Calculator • Consultez les dms de Lampouille pour plus d'infos")
-
-            await interaction.response.send_message(embed=embed)
             
-            # Supprimer le message original avec les boutons
-            try:
-                await self.original_message.delete()
-            except:
-                pass
+            # Grouper par type
+            hp_pieces = []
+            atk_pieces = []
+            
+            for gear_key, gear_data in GEAR_DATA.items():
+                stat_type = gear_data['type']
+                
+                # Skip DEF car pas de stats DEF demandées
+                if stat_type == "DEF":
+                    continue
+                
+                base_stat = base_hp if stat_type == "HP" else base_atk
+                pivot = calculate_pivot_old(gear_key, base_stat)
+                emoji = gear_data['emoji']
+                
+                # Interprétation
+                if pivot > 13.5:
+                    verdict = "⚠️ Dur"
+                elif pivot < 10:
+                    verdict = "✅ Facile"
+                else:
+                    verdict = "⚖️ Moyen"
+                
+                piece_info = f"{emoji} **{gear_key.capitalize()}** : `{pivot}%` {verdict}"
+                
+                if stat_type == "HP":
+                    hp_pieces.append(piece_info)
+                else:
+                    atk_pieces.append(piece_info)
+            
+            # Ajouter les pièces HP
+            if hp_pieces:
+                embed.add_field(
+                    name="🔵 Pièces HP",
+                    value="\n".join(hp_pieces),
+                    inline=False
+                )
+            
+            # Ajouter les pièces ATK
+            if atk_pieces:
+                embed.add_field(
+                    name="🔴 Pièces ATK",
+                    value="\n".join(atk_pieces),
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="💡 Rappel",
+                value=(
+                    "Plus le pivot est **bas**, plus c'est facile à atteindre.\n"
+                    "Ces % sont pour des pièces **SSR 100%** (stat de base maximale)."
+                ),
+                inline=False
+            )
+            
+            embed.set_footer(text="Lampa Calculator • /help pour plus d'infos")
+            
+            # Bouton pour aller plus loin
+            view = PivotActionView()
+            
+            await interaction.response.send_message(embed=embed, view=view)
             
         except ValueError:
             await interaction.response.send_message(
@@ -129,23 +239,44 @@ class StatModal(Modal):
                 ephemeral=True
             )
         except Exception as e:
-            print(f"[ERREUR MODAL] {e}", flush=True)
+            print(f"[ERREUR PIVOT] {e}", flush=True)
             traceback.print_exc()
             await interaction.response.send_message(
                 f"❌ Erreur : {e}",
                 ephemeral=True
             )
 
-class CompareModal(Modal):
+# === VIEW AVEC BOUTON ACTION ===
+class PivotActionView(View):
+    def __init__(self):
+        super().__init__(timeout=300)
+        
+        button = Button(
+            label="Calculer mes rolls actuels",
+            style=discord.ButtonStyle.primary,
+            emoji="🎲",
+            custom_id="goto_roll"
+        )
+        button.callback = self.goto_roll
+        self.add_item(button)
+    
+    async def goto_roll(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            "💡 Utilisez la commande `/roll` pour vérifier où vous en êtes avec vos pièces actuelles !",
+            ephemeral=True
+        )
+
+# === MODAL POUR /roll ===
+class RollModal(Modal):
     def __init__(self, gear_key, original_message):
-        super().__init__(title=f"Combien il te manque - {gear_key.capitalize()}")
+        super().__init__(title=f"🎲 Mes Rolls - {gear_key.capitalize()}")
         self.gear_key = gear_key
         self.gear_info = GEAR_DATA[gear_key]
         self.original_message = original_message
         
         self.stat_noire_input = TextInput(
             label=f"{self.gear_info['type']} affiché (noir)",
-            placeholder="Ex: 207152 (stats noires = totales affichées)",
+            placeholder="Ex: 207152",
             min_length=2,
             max_length=8,
             required=True
@@ -154,7 +285,7 @@ class CompareModal(Modal):
         
         self.stat_verte_input = TextInput(
             label=f"{self.gear_info['type']} bonus (vert)",
-            placeholder="Ex: 90182 (stats vertes = bonus équipement)",
+            placeholder="Ex: 90182",
             min_length=1,
             max_length=8,
             required=True
@@ -163,7 +294,7 @@ class CompareModal(Modal):
 
         self.piece_stat_pct_input = TextInput(
             label=f"% de la stat de base de ta pièce SSR",
-            placeholder="Ex : 85.22",
+            placeholder="Ex: 50 (si pièce = 6200/12400)",
             min_length=1,
             max_length=6,
             required=True
@@ -203,7 +334,7 @@ class CompareModal(Modal):
 
             if not 0 <= current_substat_roll <= MAX_SUBSTAT:
                 await interaction.response.send_message(
-                    f"❌ Les substats doivent être entre 0 et {MAX_SUBSTAT}% ",
+                    f"❌ Les substats doivent être entre 0 et {MAX_SUBSTAT}%",
                     ephemeral=True
                 )
                 return
@@ -225,7 +356,7 @@ class CompareModal(Modal):
                 surplus = round(current_substat_roll - pivot, 2)
                 total_surplus = round(ssr_current_total - r_total)
                 message = (
-                    f"✅ **  Ta pièce bat déjà la R 15% ! <:gotosleep:871036926549975112> **\n\n"
+                    f"✅ **Ta pièce bat déjà la R 15% !**\n\n"
                     f"Marge : **+{surplus}%** soit **+{total_surplus:,}** {self.gear_info['type']}"
                 )
                 color = 0x2ecc71
@@ -238,30 +369,34 @@ class CompareModal(Modal):
                     f"Reste à roller : **+{missing}%**\n"
                     f"Manque : **{stat_manquante:,}** {self.gear_info['type']}"
                 )
-                color = 0xe74c3c
+                color = self.gear_info['color']
 
             embed = discord.Embed(
-                title=f"⚖️ {self.gear_key.capitalize()} - SSR vs R 15%",
+                title=f"{self.gear_info['emoji']} {self.gear_key.capitalize()} - SSR vs R 15%",
                 description=message,
                 color=color
             )
             
-            embed.add_field(name="Stats noires", value=f"{stat_noire:,}", inline=True)
-            embed.add_field(name="Stats vertes", value=f"{stat_verte:,}", inline=True)
-            embed.add_field(name="Base calculée", value=f"{base_stat:,}", inline=True)
+            embed.add_field(name="Stats noires", value=f"`{stat_noire:,}`", inline=True)
+            embed.add_field(name="Stats vertes", value=f"`{stat_verte:,}`", inline=True)
+            embed.add_field(name="Base calculée", value=f"`{base_stat:,}`", inline=True)
 
             if not pivot_result['rentable']:
                 embed.add_field(
                     name="⚠️ Attention",
-                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : Pièce trop faible  <:dogkek:923909141523734528>   ",
+                    value=f"Le pivot ({pivot}%) dépasse {MAX_SUBSTAT}% : pièce trop faible",
                     inline=False
                 )
 
-            embed.set_footer(text="Lampa Calculator • Consultez les dms de Lampouille pour plus d'infos")
-
-            await interaction.response.send_message(embed=embed)
+            # Ajouter l'image de la pièce
+            image_filename = self.gear_info['image']
+            file = discord.File(f"./images/{image_filename}", filename=image_filename)
+            embed.set_thumbnail(url=f"attachment://{image_filename}")
             
-            # Supprimer le message original avec les boutons
+            embed.set_footer(text="Lampa Calculator • /help pour plus d'infos")
+
+            await interaction.response.send_message(embed=embed, file=file)
+            
             try:
                 await self.original_message.delete()
             except:
@@ -273,231 +408,226 @@ class CompareModal(Modal):
                 ephemeral=True
             )
         except Exception as e:
-            print(f"[ERREUR COMPARE] {e}", flush=True)
+            print(f"[ERREUR ROLL] {e}", flush=True)
             traceback.print_exc()
             await interaction.response.send_message(
                 f"❌ Erreur : {e}",
                 ephemeral=True
             )
 
-# === VUES ===
-def create_gear_view(modal_class):
-    """Factory pour créer des views avec tous les boutons gear"""
-    class GearView(View):
+# === VIEW POUR /roll ===
+def create_roll_view():
+    class RollView(View):
         def __init__(self):
             super().__init__(timeout=None)
             for row_idx, (gear_key, gear_data) in enumerate(GEAR_DATA.items()):
                 button = Button(
-                    label=f"{gear_key.capitalize()} ({gear_data['type']})",
-                    style=gear_data['style'],
+                    label=f"{gear_key.capitalize()}",
+                    style=discord.ButtonStyle.primary if gear_data['type'] == 'HP' 
+                          else discord.ButtonStyle.danger if gear_data['type'] == 'ATK'
+                          else discord.ButtonStyle.success,
                     emoji=gear_data['emoji'],
-                    custom_id=f"{modal_class.__name__}_{gear_key}",
+                    custom_id=f"roll_{gear_key}",
                     row=row_idx // 2
                 )
                 
                 async def callback(interaction: discord.Interaction, key=gear_key):
-                    await interaction.response.send_modal(modal_class(key, interaction.message))
+                    await interaction.response.send_modal(RollModal(key, interaction.message))
                 
                 button.callback = callback
                 self.add_item(button)
     
-    return GearView
+    return RollView
 
-PivotView = create_gear_view(StatModal)
-CompareView = create_gear_view(CompareModal)
+# === COMMANDES SLASH ===
+@tree.command(name="pivot", description="📊 Calcule les pivots pour battre R 15% avec SSR 100%")
+async def pivot_command(interaction: discord.Interaction):
+    """Calcule les pivots SSR 100% vs R 15% pour tous les équipements"""
+    await interaction.response.send_modal(PivotModal())
 
-# === WEB SERVER ===
-app = Flask('')
+@tree.command(name="roll", description="🎲 Vérifie tes rolls : combien il te manque ?")
+async def roll_command(interaction: discord.Interaction):
+    """Compare ta pièce SSR actuelle avec R 15%"""
+    embed = discord.Embed(
+        title="🎲 Vérifier mes rolls",
+        description="Sélectionne le type d'équipement à analyser :",
+        color=0x9b59b6
+    )
+    embed.set_footer(text="Lampa Calculator • /help pour plus d'infos")
+    
+    view = create_roll_view()()
+    await interaction.response.send_message(embed=embed, view=view)
 
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lampa Calculator - 7DS Bot</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-        .bg-shapes { position: absolute; width: 100%; height: 100%; overflow: hidden; z-index: 0; }
-        .shape { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s infinite ease-in-out; }
-        .shape1 { width: 400px; height: 400px; background: #ff6b6b; top: -100px; left: -100px; }
-        .shape2 { width: 350px; height: 350px; background: #4ecdc4; bottom: -100px; right: -100px; animation-delay: 5s; }
-        .shape3 { width: 300px; height: 300px; background: #ffe66d; top: 50%; left: 50%; animation-delay: 10s; }
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(50px, -50px) scale(1.1); }
-            66% { transform: translate(-50px, 50px) scale(0.9); }
-        }
-        .container {
-            position: relative;
-            z-index: 1;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px) saturate(180%);
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-            padding: 60px 50px;
-            text-align: center;
-            max-width: 500px;
-            animation: slideIn 0.8s ease-out;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.4);
-            padding: 8px 20px;
-            border-radius: 50px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            background: #4caf50;
-            border-radius: 50%;
-            box-shadow: 0 0 15px #4caf50;
-            animation: blink 1.5s infinite;
-        }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        .status-text { color: #fff; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
-        h1 { color: #fff; font-size: 48px; font-weight: 700; margin-bottom: 10px; text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
-        .subtitle { color: rgba(255, 255, 255, 0.8); font-size: 18px; margin-bottom: 30px; font-weight: 300; }
-        .features { display: flex; flex-direction: column; gap: 15px; margin: 30px 0; }
-        .feature {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 15px 20px;
-            border-radius: 15px;
-            color: #fff;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transition: all 0.3s ease;
-        }
-        .feature:hover { background: rgba(255, 255, 255, 0.1); transform: translateX(5px); }
-        .feature-icon { font-size: 24px; }
-        .command {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 20px;
-            border-radius: 10px;
-            color: #fff;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            margin-top: 20px;
-            display: inline-block;
-        }
-        .footer { margin-top: 30px; color: rgba(255, 255, 255, 0.6); font-size: 14px; }
-        @media (max-width: 600px) {
-            .container { padding: 40px 30px; margin: 20px; }
-            h1 { font-size: 36px; }
-            .subtitle { font-size: 16px; }
-        }
-    </style>
-</head>
-<body>
-    <div class="bg-shapes">
-        <div class="shape shape1"></div>
-        <div class="shape shape2"></div>
-        <div class="shape shape3"></div>
-    </div>
-    <div class="container">
-        <div class="status-badge">
-            <div class="status-dot"></div>
-            <span class="status-text">Bot en ligne</span>
-        </div>
-        <h1>🧮 Lampa Calculator</h1>
-        <p class="subtitle">Calculateur d'optimisation Gear pour 7DS</p>
-        <div class="features">
-            <div class="feature"><span class="feature-icon">⚡</span><span>Calculs de pivot en temps réel</span></div>
-            <div class="feature"><span class="feature-icon">🎯</span><span>6 types d'équipements analysables</span></div>
-            <div class="feature"><span class="feature-icon">📊</span><span>Comparateur de pièces SSR</span></div>
-            <div class="feature"><span class="feature-icon">🔒</span><span>100% gratuit et sécurisé</span></div>
-        </div>
-        <p style="color: rgba(255,255,255,0.8); margin-top: 30px; font-size: 14px;">Commandes disponibles :</p>
-        <div class="command">/calcul • /comparer</div>
-        <div class="footer">Made with love for The Last Dance<br>Version 2.0 • Lampouille</div>
-    </div>
-</body>
-</html>
-"""
+@tree.command(name="help", description="❓ Guide d'utilisation du bot")
+async def help_command(interaction: discord.Interaction):
+    """Affiche l'aide et les explications"""
+    embed = discord.Embed(
+        title="📖 Lampa Calculator - Guide",
+        description="Bot d'optimisation d'équipement pour The Seven Deadly Sins: Grand Cross",
+        color=0x3498db
+    )
+    
+    # Commande /pivot
+    embed.add_field(
+        name="📊 `/pivot` - Calculer les pivots",
+        value=(
+            "**À quoi ça sert ?**\n"
+            "Calcule le % de substats minimum qu'une pièce **SSR 100%** doit avoir "
+            "pour battre une **R 15% maxée**.\n\n"
+            "**Comment l'utiliser ?**\n"
+            "1. Entre tes stats HP et ATK (noires et vertes)\n"
+            "2. Le bot calcule automatiquement les pivots pour TOUTES les pièces\n"
+            "3. Plus le pivot est bas, plus c'est facile à atteindre !\n\n"
+            "**Interprétation :**\n"
+            "✅ **< 10%** : Facile, équipe du SSR sans hésiter\n"
+            "⚖️ **10-13.5%** : Moyen, faisable\n"
+            "⚠️ **> 13.5%** : Dur, garde ta R 15% si SSR mal rollé"
+        ),
+        inline=False
+    )
+    
+    # Commande /roll
+    embed.add_field(
+        name="🎲 `/roll` - Vérifier mes rolls",
+        value=(
+            "**À quoi ça sert ?**\n"
+            "Compare ta pièce SSR actuelle avec une R 15% maxée "
+            "et te dit combien de % il te reste à roller.\n\n"
+            "**Comment l'utiliser ?**\n"
+            "1. Choisis le type d'équipement (Ceinture, Orbe, etc.)\n"
+            "2. Entre tes stats (noires et vertes)\n"
+            "3. Indique le % de ta pièce SSR et tes substats actuels\n"
+            "4. Le bot te dit si tu bats déjà la R ou combien il te manque\n\n"
+            "**Exemple de résultat :**\n"
+            "🎯 Objectif : 14.47% substats TOTAL\n"
+            "Actuellement : 3%\n"
+            "Reste à roller : +11.47%"
+        ),
+        inline=False
+    )
+    
+    # Explications
+    embed.add_field(
+        name="🧮 Comment ça marche ?",
+        value=(
+            "**Formule CC :**\n"
+            "`CC = HP × 0.2 + ATK × 1.0 + DEF × 0.8`\n\n"
+            "**Substats :**\n"
+            "Les substats s'appliquent sur ta **BASE** (stats noires - vertes), "
+            "pas sur la pièce !\n\n"
+            "**Exemple :**\n"
+            "Base HP : 150,000\n"
+            "Substats 3% = 150,000 × 3% = **4,500 HP**\n"
+            "(pas 6,200 × 3% = 186)"
+        ),
+        inline=False
+    )
+    
+    # Tips
+    embed.add_field(
+        name="💡 Conseils Pro",
+        value=(
+            "• **R 15% d'abord** : Beaucoup moins cher que SSR\n"
+            "• **Ceintures en priorité** : Meilleur ratio CC/Gold\n"
+            "• **Roll 12-13%** : Plus rentable que viser 15% parfait\n"
+            "• **Type par type** : Meilleur pour Box CC que perso par perso"
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text="Développé par Lampouille • Version 2.0")
+    
+    await interaction.response.send_message(embed=embed)
+
+# === ÉVÉNEMENTS ===
+@client.event
+async def on_ready():
+    await tree.sync()
+    print(f'✅ Bot connecté : {client.user}')
+    print(f'📊 Commandes disponibles : /pivot, /roll, /help')
+
+# === WEB SERVER (KEEP-ALIVE) ===
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Lampa Calculator</title>
+        <style>
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                text-align: center; 
+                padding: 50px; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                margin: 0;
+            }
+            .container {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                padding: 40px;
+                max-width: 600px;
+                margin: 0 auto;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            }
+            h1 { 
+                color: #fff;
+                font-size: 3em;
+                margin-bottom: 10px;
+            }
+            .status {
+                display: inline-block;
+                padding: 8px 20px;
+                background: #2ecc71;
+                border-radius: 20px;
+                font-weight: bold;
+                margin: 20px 0;
+            }
+            ul {
+                list-style: none;
+                padding: 0;
+            }
+            li {
+                background: rgba(255, 255, 255, 0.2);
+                margin: 10px 0;
+                padding: 15px;
+                border-radius: 10px;
+                font-size: 1.1em;
+            }
+            .emoji {
+                font-size: 1.5em;
+                margin-right: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🤖 Lampa Calculator</h1>
+            <p style="font-size: 1.2em;">Bot Discord pour 7DS Grand Cross</p>
+            <div class="status">✅ Online</div>
+            <hr style="border: 1px solid rgba(255,255,255,0.3); margin: 30px 0;">
+            <h3>Commandes disponibles :</h3>
+            <ul>
+                <li><span class="emoji">📊</span> /pivot - Calculer les pivots</li>
+                <li><span class="emoji">🎲</span> /roll - Vérifier mes rolls</li>
+                <li><span class="emoji">❓</span> /help - Guide d'utilisation</li>
+            </ul>
+        </div>
+    </body>
+    </html>
+    ''')
 
-def run():
+def run_web():
     app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    Thread(target=run, daemon=True).start()
-
-# === BOT DISCORD ===
-intents = discord.Intents.default()
-intents.message_content = True
-
-bot = discord.Client(intents=intents)
-tree = app_commands.CommandTree(bot)
-
-@bot.event
-async def on_ready():
-    print("=" * 60, flush=True)
-    print(f"✅ Bot connecté : {bot.user}", flush=True)
-    print(f"📚 Discord.py version : {discord.__version__}", flush=True)
-    print("=" * 60, flush=True)
-    try:
-        synced = await tree.sync()
-        print(f"🔄 Commandes synchronisées : {len(synced)}", flush=True)
-        for cmd in synced:
-            print(f"   ➜ /{cmd.name}", flush=True)
-    except Exception as e:
-        print(f"❌ Erreur de synchronisation : {e}", flush=True)
-        traceback.print_exc()
-
-@tree.command(name="calcul", description="🧮 Calculer le pivot optimal pour une pièce d'équipement")
-async def calcul(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="🧮 Gear Roll Calculator",
-        description="Sélectionnez le type d'équipement à analyser :",
-        color=0x3498db
-    )
-    embed.set_footer(text="Cliquez sur un bouton pour commencer")
-    await interaction.response.send_message(embed=embed, view=PivotView())
-
-@tree.command(name="comparer", description="⚖️ Estimer le roll à viser pour battre du R maxé")
-async def comparer(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="<:cash:936291615679598672>  Calculateur de roll SSR  <:cash:936291615679598672> ",
-        description="Choisissez le type d'équipement à comparer :",
-        color=0x9b59b6
-    )
-    embed.set_footer(text="Cliquez sur un bouton pour commencer")
-    await interaction.response.send_message(embed=embed, view=CompareView())
 
 # === DÉMARRAGE ===
 if __name__ == "__main__":
-    keep_alive()
-    bot.run(TOKEN)
-
-
-
-
+    web_thread = Thread(target=run_web)
+    web_thread.daemon = True
+    web_thread.start()
+    
+    client.run(TOKEN)
