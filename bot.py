@@ -219,97 +219,343 @@ async def roll_command(interaction: discord.Interaction):
     view = create_roll_view()()
     await interaction.response.send_message(embed=discord.Embed(title="Choisis une pièce", color=0x9b59b6), view=view)
 
-@tree.command(name="help", description="❓ Guide")
+@tree.command(name="help", description="❓ Comment utiliser le bot")
 async def help_command(interaction: discord.Interaction):
     log_usage(interaction, "help")
-    await interaction.response.send_message("📖 Guide disponible !")
+    
+    embed = discord.Embed(title="📖 Guide du Lampa Calculator", color=0x3498db)
+    
+    embed.add_field(
+        name="📊 /pivot", 
+        value=(
+            "Calcule le % de substats qu'il te faut sur une SSR pour battre une R 15%.\n"
+            "• **Noir** : La stat totale affichée à l'écran.\n"
+            "• **Vert** : La stat bonus (+xxxx) affichée en vert.\n"
+            "*(Le bot fait la soustraction tout seul !)*"
+        ), 
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🎲 /roll", 
+        value=(
+            "Vérifie si ta pièce actuelle est bonne ou poubelle.\n"
+            "• Choisis le type de pièce (Ceinture, Bracelet...).\n"
+            "• Rentre les stats Noir/Vert.\n"
+            "• Rentre le % de la pièce (ex: 95%) et tes rolls actuels (ex: 12.5%)."
+        ), 
+        inline=False
+    )
+    
+    embed.set_footer(text="Dev by Lampa • Version 2.0")
+    await interaction.response.send_message(embed=embed)
+
 
 @client.event
 async def on_ready():
     await tree.sync()
     print(f'✅ Bot connecté : {client.user}')
 
-# === WEB SERVER AVEC ANALYTICS ===
+# === WEB SERVER PREMIUM DESIGN ===
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    # Trier les top utilisateurs
-    top_users = sorted(USAGE_STATS["users"].values(), key=lambda x: x['count'], reverse=True)[:10]
+# --- LAYOUT GÉNÉRAL (CSS & SQUELETTE) ---
+def get_layout(content, title="Lampa Calculator", active_page="/"):
+    nav_items = {
+        "/": "🏠 Accueil",
+        "/guide": "📖 Commandes & Guide",
+        "/stats": "📊 Statistiques"
+    }
     
-    html = '''
+    nav_html = ""
+    for link, name in nav_items.items():
+        active_class = 'active' if link == active_page else ''
+        nav_html += f'<a href="{link}" class="nav-item {active_class}">{name}</a>'
+
+    return f'''
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Lampa Stats</title>
+        <title>{title}</title>
         <style>
-            body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: white; padding: 20px; }
-            .container { max-width: 800px; margin: 0 auto; }
-            h1 { text-align: center; color: #667eea; margin-bottom: 40px; }
-            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-            .card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; text-align: center; }
-            .number { font-size: 2.5em; font-weight: bold; color: #f093fb; }
-            .label { color: #a0a0a0; }
-            table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; margin-bottom: 40px; }
-            th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
-            th { background: rgba(0,0,0,0.3); color: #667eea; }
-            tr:hover { background: rgba(255,255,255,0.05); }
+            :root {{
+                --glass-bg: rgba(255, 255, 255, 0.05);
+                --glass-border: rgba(255, 255, 255, 0.1);
+                --text-glow: 0 0 10px rgba(118, 75, 162, 0.5);
+                --primary-gradient: linear-gradient(45deg, #00dbde, #fc00ff);
+            }}
+
+            body {{
+                margin: 0;
+                padding: 0;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                background: #0f0c29;  /* fallback */
+                background: linear-gradient(to bottom right, #24243e, #302b63, #0f0c29);
+                color: white;
+                min-height: 100vh;
+                overflow-x: hidden;
+            }}
+
+            /* BACKGROUND ANIMÉ */
+            body::before {{
+                content: '';
+                position: fixed;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(118,75,162,0.15) 0%, transparent 60%),
+                            radial-gradient(circle, rgba(0,219,222,0.1) 0%, transparent 50%);
+                z-index: -1;
+                animation: float 20s infinite linear;
+            }}
+            
+            @keyframes float {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+
+            /* NAVBAR */
+            .navbar {{
+                display: flex;
+                justify-content: center;
+                padding: 20px;
+                backdrop-filter: blur(10px);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                border-bottom: 1px solid var(--glass-border);
+                background: rgba(15, 12, 41, 0.7);
+            }}
+
+            .nav-item {{
+                color: rgba(255,255,255,0.6);
+                text-decoration: none;
+                margin: 0 20px;
+                font-weight: 500;
+                transition: 0.3s;
+                position: relative;
+                padding: 5px 0;
+            }}
+
+            .nav-item:hover, .nav-item.active {{
+                color: white;
+                text-shadow: var(--text-glow);
+            }}
+            
+            .nav-item.active::after {{
+                content: '';
+                position: absolute;
+                bottom: -5px;
+                left: 0;
+                width: 100%;
+                height: 2px;
+                background: var(--primary-gradient);
+                box-shadow: 0 0 10px #fc00ff;
+            }}
+
+            /* CONTENEUR */
+            .container {{
+                max-width: 1000px;
+                margin: 40px auto;
+                padding: 20px;
+            }}
+
+            /* EFFET GLASS (La Vitre) */
+            .glass-card {{
+                background: var(--glass-bg);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border: 1px solid var(--glass-border);
+                border-radius: 20px;
+                padding: 30px;
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+                margin-bottom: 30px;
+                transition: transform 0.3s ease;
+            }}
+            
+            .glass-card:hover {{
+                border-color: rgba(255,255,255,0.2);
+            }}
+
+            /* TEXTE LIQUIDE */
+            .liquid-text {{
+                background: var(--primary-gradient);
+                background-size: 200% auto;
+                color: #000;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                animation: shine 3s linear infinite;
+                font-weight: 800;
+            }}
+
+            @keyframes shine {{ to {{ background-position: 200% center; }} }}
+
+            /* BOUTON STATUS PULSE */
+            .status-badge {{
+                display: inline-flex;
+                align-items: center;
+                padding: 8px 16px;
+                background: rgba(46, 204, 113, 0.1);
+                border: 1px solid #2ecc71;
+                border-radius: 50px;
+                color: #2ecc71;
+                font-weight: bold;
+                box-shadow: 0 0 15px rgba(46, 204, 113, 0.2);
+            }}
+
+            .dot {{
+                width: 10px;
+                height: 10px;
+                background: #2ecc71;
+                border-radius: 50%;
+                margin-right: 10px;
+                animation: pulse 2s infinite;
+            }}
+
+            @keyframes pulse {{
+                0% {{ box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7); }}
+                70% {{ box-shadow: 0 0 0 10px rgba(46, 204, 113, 0); }}
+                100% {{ box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }}
+            }}
+
+            /* TABLES */
+            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+            th {{ text-align: left; color: #a0a0a0; padding: 10px; border-bottom: 1px solid var(--glass-border); }}
+            td {{ padding: 15px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }}
+            
+            /* GRID ACCUEIL */
+            .grid-3 {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }}
+            .feature-icon {{ font-size: 2em; margin-bottom: 10px; display: block; }}
+
         </style>
     </head>
     <body>
+        <nav class="navbar">
+            {nav_html}
+        </nav>
         <div class="container">
-            <h1>📊 Lampa Analytics</h1>
-            
-            <div class="stats-grid">
-                <div class="card">
-                    <div class="number">{{ total }}</div>
-                    <div class="label">Commandes Totales</div>
-                </div>
-                <div class="card">
-                    <div class="number">{{ users_count }}</div>
-                    <div class="label">Utilisateurs Uniques</div>
-                </div>
-            </div>
-
-            <h2>🏆 Top Utilisateurs</h2>
-            <table>
-                <tr><th>Utilisateur</th><th>Commandes</th></tr>
-                {% for user in top_users %}
-                <tr>
-                    <td>{{ user.name }}</td>
-                    <td>{{ user.count }}</td>
-                </tr>
-                {% endfor %}
-            </table>
-
-            <h2>🕒 Dernières Activités</h2>
-            <table>
-                <tr><th>Utilisateur</th><th>Commande</th><th>Heure</th></tr>
-                {% for item in history %}
-                <tr>
-                    <td>{{ item.user }}</td>
-                    <td>/{{ item.command }}</td>
-                    <td>{{ item.time }}</td>
-                </tr>
-                {% endfor %}
-            </table>
+            {content}
         </div>
     </body>
     </html>
     '''
-    return render_template_string(html, 
-                                total=USAGE_STATS["total_commands"],
-                                users_count=len(USAGE_STATS["users"]),
-                                top_users=top_users,
-                                history=USAGE_STATS["history"])
+
+# --- PAGE 1 : VITRINE (ACCUEIL) ---
+@app.route('/')
+def home():
+    content = f'''
+        <div style="text-align: center; margin-bottom: 60px;">
+            <h1 style="font-size: 3.5em; margin-bottom: 10px;" class="liquid-text">LAMPA CALCULATOR</h1>
+            <p style="font-size: 1.2em; color: #ccc; margin-bottom: 30px;">Optimisez vos équipements 7DS avec précision mathématique.</p>
+            
+            <div class="status-badge">
+                <div class="dot"></div>
+                SYSTEM ONLINE
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="glass-card" style="text-align: center;">
+                <span class="feature-icon">📐</span>
+                <h3>Précision Chirurgicale</h3>
+                <p style="color: #aaa; font-size: 0.9em;">Ne gaspillez plus de ressources. Calculez le point de bascule exact entre stuff R et SSR.</p>
+            </div>
+            <div class="glass-card" style="text-align: center;">
+                <span class="feature-icon">🚀</span>
+                <h3>Optimisation Box</h3>
+                <p style="color: #aaa; font-size: 0.9em;">Analysez vos rolls instantanément et sachez quelles pièces graver en UR.</p>
+            </div>
+            <div class="glass-card" style="text-align: center;">
+                <span class="feature-icon">⚡</span>
+                <h3>Rapide & Facile</h3>
+                <p style="color: #aaa; font-size: 0.9em;">Des commandes simples, des résultats visuels clairs directement dans Discord.</p>
+            </div>
+        </div>
+        
+        <div class="glass-card" style="margin-top: 40px; text-align: center;">
+            <h3 style="margin-bottom: 5px;">Rejoindre l'aventure</h3>
+            <p style="color: #aaa;">Utilisez les commandes slash <code>/</code> sur votre serveur.</p>
+        </div>
+    '''
+    return render_template_string(get_layout(content, "Lampa - Accueil", "/"))
+
+# --- PAGE 2 : GUIDE & COMMANDES ---
+@app.route('/guide')
+def guide():
+    content = '''
+        <h1 class="liquid-text">Commandes & Guide</h1>
+        
+        <div class="glass-card">
+            <h2 style="color: #00dbde;">📊 /pivot</h2>
+            <p><strong>C'est quoi ?</strong> La commande essentielle pour savoir si vous devez passer au SSR.</p>
+            <p>Elle calcule le pourcentage de substats minimum qu'une pièce SSR doit avoir pour battre une pièce R avec 15% de rolls.</p>
+            <br>
+            <code>Utilisation : Entrez simplement vos Stats Noires (Total) et Vertes (Bonus).</code>
+        </div>
+
+        <div class="glass-card">
+            <h2 style="color: #fc00ff;">🎲 /roll</h2>
+            <p><strong>C'est quoi ?</strong> Le juge de paix pour vos équipements actuels.</p>
+            <p>Vous avez drop une pièce SSR ? Vous avez fait quelques rolls ? Vérifiez si elle est "Rentable" ou "Poubelle".</p>
+            <br>
+            <code>Utilisation : Sélectionnez la pièce, entrez les stats et le % actuel.</code>
+        </div>
+        
+        <div class="glass-card">
+            <h3>💡 Astuce Pro</h3>
+            <p style="color: #aaa;">Pour les pièces HP (Ceinture/Orbe), le pivot est souvent plus bas (facile à atteindre). Pour les pièces ATK, c'est plus exigeant !</p>
+        </div>
+    '''
+    return render_template_string(get_layout(content, "Lampa - Guide", "/guide"))
+
+# --- PAGE 3 : STATISTIQUES ---
+@app.route('/stats')
+def stats():
+    top_users = sorted(USAGE_STATS["users"].values(), key=lambda x: x['count'], reverse=True)[:10]
+    
+    # Génération HTML des tableaux
+    rows_users = "".join([f"<tr><td>{u['name']}</td><td><strong>{u['count']}</strong></td></tr>" for u in top_users])
+    rows_history = "".join([f"<tr><td>{i['user']}</td><td><span style='color:#00dbde'>/{i['command']}</span></td><td style='color:#aaa'>{i['time']}</td></tr>" for i in USAGE_STATS["history"]])
+
+    content = f'''
+        <h1 class="liquid-text">Statistiques en Temps Réel</h1>
+        
+        <div class="grid-3">
+            <div class="glass-card">
+                <div style="font-size: 3em; font-weight: bold; color: #fff;">{USAGE_STATS["total_commands"]}</div>
+                <div style="color: #aaa;">Commandes Totales</div>
+            </div>
+            <div class="glass-card">
+                <div style="font-size: 3em; font-weight: bold; color: #fff;">{len(USAGE_STATS["users"])}</div>
+                <div style="color: #aaa;">Utilisateurs Uniques</div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3>🏆 Top Utilisateurs</h3>
+            <table>
+                <tr><th>Pseudo</th><th>Commandes</th></tr>
+                {rows_users}
+            </table>
+        </div>
+
+        <div class="glass-card">
+            <h3>⏱️ Historique Récent</h3>
+            <table>
+                <tr><th>Utilisateur</th><th>Action</th><th>Heure</th></tr>
+                {rows_history}
+            </table>
+        </div>
+    '''
+    return render_template_string(get_layout(content, "Lampa - Stats", "/stats"))
 
 def run_web():
     app.run(host='0.0.0.0', port=8080)
+
 
 if __name__ == "__main__":
     web_thread = Thread(target=run_web)
     web_thread.daemon = True
     web_thread.start()
     client.run(TOKEN)
+
