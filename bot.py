@@ -629,7 +629,7 @@ def farming():
                 <p class="gain">~460 Enclumes</p>
             </div>
 
-            <!-- 1ère Place : BDG HALF STAM -->
+            <!-- 1ère Place : BDG HALF STAMINA -->
             <div class="podium-step step-1">
                 <div class="crown">👑</div>
                 <div class="medal gold">1</div>
@@ -658,8 +658,8 @@ def farming():
 
         <!-- VISUALISATION DE L'ECART -->
         <div class="glass-card" style="margin-top: 60px;">
-            <h3>📉 L'écart est MASSIF !</h3>
-            <p style="color: #aaa; margin-bottom: 20px;">Regardez ce que vous perdez en farmant le Donjon Or au lieu d'attendre la Demi-Stamina.</p>
+            <h3>📉 L'écart est important !</h3>
+            <p style="color: #aaa; margin-bottom: 20px;">Ce que vous perdez en farmant le Donjon Or au lieu d'attendre la Demi-Stamina.</p>
             
             <!-- Barres comparatives -->
             <div class="chart-row">
@@ -667,11 +667,11 @@ def farming():
                 <div class="chart-bar" style="width: 26%; background: #e74c3c;">240</div>
             </div>
             <div class="chart-row">
-                <span class="chart-label">BdG (70)</span>
+                <span class="chart-label">BDG (70 Stam)</span>
                 <div class="chart-bar" style="width: 50%; background: #f39c12;">460</div>
             </div>
             <div class="chart-row">
-                <span class="chart-label" style="color: #00dbde; font-weight: bold;">BdG (Half)</span>
+                <span class="chart-label" style="color: #00dbde; font-weight: bold;">BDG (Half)</span>
                 <div class="chart-bar" style="width: 100%; background: linear-gradient(90deg, #00dbde, #fc00ff); box-shadow: 0 0 15px #fc00ff;">915</div>
             </div>
         </div>
@@ -762,6 +762,7 @@ if __name__ == "__main__":
     web_thread.daemon = True
     web_thread.start()
     client.run(TOKEN)
+
 
 
 
