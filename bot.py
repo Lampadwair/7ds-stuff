@@ -219,6 +219,38 @@ async def roll_command(interaction: discord.Interaction):
     view = create_roll_view()()
     await interaction.response.send_message(embed=discord.Embed(title="Choisis une pièce", color=0x9b59b6), view=view)
 
+@tree.command(name="farm", description="💸 Rentabilité Gold vs Enclumes")
+async def farm_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="💸 Rentabilité Farming Enclumes", color=0xf1c40f)
+    
+    embed.add_field(
+        name="🥇 Le ROI : BdG (Half-Stam)", 
+        value="**0,054** Enclume/Stam\n`915 Enclumes en 8h`\nC'est le moment de claquer toutes tes potions !", 
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🥈 BdG (Normal)", 
+        value="**0,027** Enclume/Stam\n`Moins rentable, mais OK si pressé.`", 
+        inline=True
+    )
+    
+    embed.add_field(
+        name="🥉 Donjon Or", 
+        value="**0,020** Enclume/Stam\n`240 Enclumes en 8h`\nAucun intérêt pour les enclumes.", 
+        inline=True
+    )
+    
+    embed.set_footer(text="Basé sur 200k gold/tirage et 0,66 enclume/tirage.")
+    
+    # Ajoute un bouton vers le site pour voir les détails
+    view = View()
+    btn = Button(label="Voir Graphiques", style=discord.ButtonStyle.link, url="https://ton-url-render.com/farming")
+    view.add_item(btn)
+    
+    await interaction.response.send_message(embed=embed, view=view)
+
+
 @tree.command(name="help", description="❓ Comment utiliser le bot")
 async def help_command(interaction: discord.Interaction):
     log_usage(interaction, "help")
@@ -264,6 +296,7 @@ def get_layout(content, title="Lampa Calculator", active_page="/"):
     nav_items = {
         "/": "🏠 Accueil",
         "/guide": "📖 Commandes & Guide",
+        "/farming": "💸 Farming",
         "/stats": "📊 Statistiques"
     }
     
@@ -549,6 +582,101 @@ def stats():
     '''
     return render_template_string(get_layout(content, "Lampa - Stats", "/stats"))
 
+@app.route('/farming')
+def farming():
+    content = '''
+        <h1 class="liquid-text">Rentabilité du Farming</h1>
+        
+        <div class="glass-card">
+            <h2 style="color: #f1c40f;">💰 Or & Enclumes</h2>
+            <p>Analyse de la rentabilité pour obtenir des enclumes via le tirage d'équipement (Gacha).</p>
+            
+            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                <div style="text-align: center;">
+                    <span style="font-size: 2em; display: block;">200 000</span>
+                    <span style="color: #aaa; font-size: 0.9em;">Gold par Tirage</span>
+                </div>
+                <div style="text-align: center;">
+                    <span style="font-size: 2em; display: block; color: #e74c3c;">0,66</span>
+                    <span style="color: #aaa; font-size: 0.9em;">Enclumes / Tirage</span>
+                </div>
+                <div style="text-align: center;">
+                    <span style="font-size: 2em; display: block; color: #2ecc71;">5,4 M</span>
+                    <span style="color: #aaa; font-size: 0.9em;">Gold Revente (Inv. Full)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <!-- CARTE 1 : DONJON OR -->
+            <div class="glass-card" style="border-top: 4px solid #f1c40f;">
+                <h3>🏰 Donjon Or (Dimanche)</h3>
+                <p style="color: #aaa; margin-bottom: 20px;">Le classique pour farm les golds bruts.</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Enclumes / Stamina</span>
+                        <strong>0,020</strong>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
+                        <div style="background: #f1c40f; width: 37%; height: 100%; border-radius: 4px;"></div>
+                    </div>
+                </div>
+
+                <ul style="list-style: none; padding: 0; color: #ccc; font-size: 0.9em;">
+                    <li>⚡ <strong>30</strong> Stamina / Run</li>
+                    <li>💰 <strong>64M</strong> Gold / 8h</li>
+                    <li>🔨 <strong>240</strong> Enclumes (via tirage)</li>
+                </ul>
+            </div>
+
+            <!-- CARTE 2 : BDG 70 (EXTRÊME) -->
+            <div class="glass-card" style="border-top: 4px solid #e67e22;">
+                <h3>🔥 BdG Infernale (70 Stam)</h3>
+                <p style="color: #aaa; margin-bottom: 20px;">Farm rapide mais coûteux en stamina.</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Enclumes / Stamina</span>
+                        <strong>0,027</strong>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
+                        <div style="background: #e67e22; width: 50%; height: 100%; border-radius: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARTE 3 : BDG 35 (HALF STAM) -->
+            <div class="glass-card" style="border-top: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
+                <h3>👑 BdG (Half Stamina)</h3>
+                <p style="color: #aaa; margin-bottom: 20px;">Le ROI du farm d'enclumes.</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="color: #fff;">Enclumes / Stamina</span>
+                        <strong style="color: #00dbde;">0,054</strong>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
+                        <div style="background: linear-gradient(90deg, #00dbde, #fc00ff); width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 0 10px #fc00ff;"></div>
+                    </div>
+                </div>
+
+                <ul style="list-style: none; padding: 0; color: #ccc; font-size: 0.9em;">
+                    <li>⚡ <strong>35</strong> Stamina / Run</li>
+                    <li>🔨 <strong>915</strong> Enclumes / 8h</li>
+                    <li>🏆 <strong>2x plus rentable</strong> que tout le reste</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3>📝 Conclusion</h3>
+            <p>Si vous cherchez des <strong>Enclumes</strong>, attendez absolument la <strong>Demi-Stamina (Half-Stam)</strong> sur les Boss de Guilde (BdG) ou les Boss de Combat.</p>
+            <p>Le <strong>Donjon Or</strong> sert uniquement à monter vos persos/équipements, mais c'est le pire moyen d'obtenir des enclumes via le recyclage.</p>
+        </div>
+    '''
+    return render_template_string(get_layout(content, "Lampa - Farming", "/farming"))
+
 def run_web():
     app.run(host='0.0.0.0', port=8080)
 
@@ -558,4 +686,5 @@ if __name__ == "__main__":
     web_thread.daemon = True
     web_thread.start()
     client.run(TOKEN)
+
 
