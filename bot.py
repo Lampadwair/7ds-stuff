@@ -219,36 +219,58 @@ async def roll_command(interaction: discord.Interaction):
     view = create_roll_view()()
     await interaction.response.send_message(embed=discord.Embed(title="Choisis une pièce", color=0x9b59b6), view=view)
 
-@tree.command(name="farm", description="💸 Rentabilité Gold vs Enclumes")
+@tree.command(name="farm", description="💸 Rentabilité Gold vs Enclumes (Podium)")
 async def farm_command(interaction: discord.Interaction):
-    embed = discord.Embed(title="💸 Rentabilité Farming Enclumes", color=0xf1c40f)
+    embed = discord.Embed(
+        title="🏆 Rentabilité Farming Enclumes", 
+        description="Comparatif sur **8 heures** de farm (Full Stamina)",
+        color=0x00dbde
+    )
     
+    # 1. LE VAINQUEUR (BdG Half)
     embed.add_field(
-        name="🥇 Le ROI : BdG (Half-Stam)", 
-        value="**0,054** Enclume/Stam\n`915 Enclumes en 8h`\nC'est le moment de claquer toutes tes potions !", 
+        name="👑 N°1 : BdG (Half-Stam)", 
+        value=(
+            "**0,054** Enclume/Stam\n"
+            "📈 **915 Enclumes** / 8h\n"
+            "✨ *Le ROI absolu. 3x plus rentable.*"
+        ), 
         inline=False
     )
     
+    # 2. LE DEUXIÈME (BdG Normal)
     embed.add_field(
-        name="🥈 BdG (Normal)", 
-        value="**0,027** Enclume/Stam\n`Moins rentable, mais OK si pressé.`", 
+        name="🥈 N°2 : BdG (70 Stam)", 
+        value=(
+            "**0,027** Enclume/Stam\n"
+            "📉 **~460 Enclumes** / 8h\n"
+            "⚠️ *Coûteux en potions.*"
+        ), 
         inline=True
     )
     
+    # 3. LE PERDANT (Donjon Or)
     embed.add_field(
-        name="🥉 Donjon Or", 
-        value="**0,020** Enclume/Stam\n`240 Enclumes en 8h`\nAucun intérêt pour les enclumes.", 
+        name="🥉 N°3 : Donjon Or", 
+        value=(
+            "**0,020** Enclume/Stam\n"
+            "⛔ **240 Enclumes** / 8h\n"
+            "❌ *À éviter pour les enclumes.*"
+        ), 
         inline=True
     )
     
-    embed.set_footer(text="Basé sur 200k gold/tirage et 0,66 enclume/tirage.")
+    # Footer technique
+    embed.set_footer(text="Base : 1 Tirage = 0,66 Enclume • 1 Tirage = 200k Gold")
     
-    # Ajoute un bouton vers le site pour voir les détails
+    # Bouton vers le site (le Podium visuel)
     view = View()
-    btn = Button(label="Voir Graphiques", style=discord.ButtonStyle.link, url="https://ton-url-render.com/farming")
+    # ATTENTION : Remplace l'URL ci-dessous par la VRAIE URL de ton bot Render
+    btn = Button(label="Voir le Graphique 📊", style=discord.ButtonStyle.link, url="https://ton-app-name.onrender.com/farming")
     view.add_item(btn)
     
     await interaction.response.send_message(embed=embed, view=view)
+
 
 
 @tree.command(name="help", description="❓ Comment utiliser le bot")
@@ -582,100 +604,154 @@ def stats():
     '''
     return render_template_string(get_layout(content, "Lampa - Stats", "/stats"))
 
+# --- PAGE 4 : FARMING (PODIUM EDITION) ---
 @app.route('/farming')
 def farming():
     content = '''
-        <h1 class="liquid-text">Rentabilité du Farming</h1>
+        <h1 class="liquid-text" style="text-align: center; margin-bottom: 40px;">Rentabilité Enclumes - Merci à Wazdakka pour les data</h1>
         
-        <div class="glass-card">
-            <h2 style="color: #f1c40f;">💰 Or & Enclumes</h2>
-            <p>Analyse de la rentabilité pour obtenir des enclumes via le tirage d'équipement (Gacha).</p>
+        <!-- RESUME RAPIDE -->
+        <div style="text-align: center; margin-bottom: 50px;">
+            <p style="color: #ccc; font-size: 1.1em;">Comparatif sur <strong>8 heures de farm</strong> avec potions.</p>
+        </div>
+
+        <!-- LE PODIUM -->
+        <div class="podium-container">
             
-            <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-                <div style="text-align: center;">
-                    <span style="font-size: 2em; display: block;">200 000</span>
-                    <span style="color: #aaa; font-size: 0.9em;">Gold par Tirage</span>
+            <!-- 2ème Place : BDG NORMAL -->
+            <div class="podium-step step-2">
+                <div class="medal silver">2</div>
+                <h3>BdG (70 Stam)</h3>
+                <div class="stat-box">
+                    <span class="value">0,027</span>
+                    <span class="label">Enclume/Stam</span>
                 </div>
-                <div style="text-align: center;">
-                    <span style="font-size: 2em; display: block; color: #e74c3c;">0,66</span>
-                    <span style="color: #aaa; font-size: 0.9em;">Enclumes / Tirage</span>
+                <p class="gain">~460 Enclumes</p>
+            </div>
+
+            <!-- 1ère Place : BDG HALF STAM -->
+            <div class="podium-step step-1">
+                <div class="crown">👑</div>
+                <div class="medal gold">1</div>
+                <h3>BdG (Half-Stam)</h3>
+                <div class="badge-winner">MEILLEUR RATIO</div>
+                <div class="stat-box winner-box">
+                    <span class="value">0,054</span>
+                    <span class="label">Enclume/Stam</span>
                 </div>
-                <div style="text-align: center;">
-                    <span style="font-size: 2em; display: block; color: #2ecc71;">5,4 M</span>
-                    <span style="color: #aaa; font-size: 0.9em;">Gold Revente (Inv. Full)</span>
+                <p class="gain gain-winner">915 Enclumes</p>
+                <p class="sub-gain">Le plus rentable !</p>
+            </div>
+
+            <!-- 3ème Place : DONJON OR -->
+            <div class="podium-step step-3">
+                <div class="medal bronze">3</div>
+                <h3>Donjon Or</h3>
+                <div class="stat-box">
+                    <span class="value">0,020</span>
+                    <span class="label">Enclume/Stam</span>
                 </div>
+                <p class="gain">240 Enclumes</p>
+            </div>
+
+        </div>
+
+        <!-- VISUALISATION DE L'ECART -->
+        <div class="glass-card" style="margin-top: 60px;">
+            <h3>📉 L'écart est MASSIF !</h3>
+            <p style="color: #aaa; margin-bottom: 20px;">Regardez ce que vous perdez en farmant le Donjon Or au lieu d'attendre la Demi-Stamina.</p>
+            
+            <!-- Barres comparatives -->
+            <div class="chart-row">
+                <span class="chart-label">Donjon Or</span>
+                <div class="chart-bar" style="width: 26%; background: #e74c3c;">240</div>
+            </div>
+            <div class="chart-row">
+                <span class="chart-label">BdG (70)</span>
+                <div class="chart-bar" style="width: 50%; background: #f39c12;">460</div>
+            </div>
+            <div class="chart-row">
+                <span class="chart-label" style="color: #00dbde; font-weight: bold;">BdG (Half)</span>
+                <div class="chart-bar" style="width: 100%; background: linear-gradient(90deg, #00dbde, #fc00ff); box-shadow: 0 0 15px #fc00ff;">915</div>
             </div>
         </div>
 
-        <div class="grid-3">
-            <!-- CARTE 1 : DONJON OR -->
-            <div class="glass-card" style="border-top: 4px solid #f1c40f;">
-                <h3>🏰 Donjon Or (Dimanche)</h3>
-                <p style="color: #aaa; margin-bottom: 20px;">Le classique pour farm les golds bruts.</p>
-                
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Enclumes / Stamina</span>
-                        <strong>0,020</strong>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
-                        <div style="background: #f1c40f; width: 37%; height: 100%; border-radius: 4px;"></div>
-                    </div>
-                </div>
+        <!-- STYLE CSS SPECIFIQUE AU PODIUM (Intégré ici pour simplicité) -->
+        <style>
+            .podium-container {
+                display: flex;
+                align-items: flex-end;
+                justify-content: center;
+                gap: 20px;
+                margin-top: 20px;
+                height: 400px;
+            }
 
-                <ul style="list-style: none; padding: 0; color: #ccc; font-size: 0.9em;">
-                    <li>⚡ <strong>30</strong> Stamina / Run</li>
-                    <li>💰 <strong>64M</strong> Gold / 8h</li>
-                    <li>🔨 <strong>240</strong> Enclumes (via tirage)</li>
-                </ul>
-            </div>
+            .podium-step {
+                background: rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 15px 15px 0 0;
+                text-align: center;
+                padding: 20px;
+                position: relative;
+                transition: transform 0.3s ease;
+            }
 
-            <!-- CARTE 2 : BDG 70 (EXTRÊME) -->
-            <div class="glass-card" style="border-top: 4px solid #e67e22;">
-                <h3>🔥 BdG Infernale (70 Stam)</h3>
-                <p style="color: #aaa; margin-bottom: 20px;">Farm rapide mais coûteux en stamina.</p>
-                
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span>Enclumes / Stamina</span>
-                        <strong>0,027</strong>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
-                        <div style="background: #e67e22; width: 50%; height: 100%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-            </div>
+            .podium-step:hover { transform: translateY(-5px); }
 
-            <!-- CARTE 3 : BDG 35 (HALF STAM) -->
-            <div class="glass-card" style="border-top: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1);">
-                <h3>👑 BdG (Half Stamina)</h3>
-                <p style="color: #aaa; margin-bottom: 20px;">Le ROI du farm d'enclumes.</p>
-                
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                        <span style="color: #fff;">Enclumes / Stamina</span>
-                        <strong style="color: #00dbde;">0,054</strong>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px;">
-                        <div style="background: linear-gradient(90deg, #00dbde, #fc00ff); width: 100%; height: 100%; border-radius: 4px; box-shadow: 0 0 10px #fc00ff;"></div>
-                    </div>
-                </div>
+            /* HAUTEURS */
+            .step-1 { height: 100%; width: 35%; border-top: 2px solid #00dbde; background: linear-gradient(to bottom, rgba(0, 219, 222, 0.1), rgba(255,255,255,0.02)); z-index: 2; box-shadow: 0 0 30px rgba(0, 219, 222, 0.15); }
+            .step-2 { height: 75%; width: 30%; border-top: 2px solid #f39c12; }
+            .step-3 { height: 60%; width: 30%; border-top: 2px solid #e74c3c; }
 
-                <ul style="list-style: none; padding: 0; color: #ccc; font-size: 0.9em;">
-                    <li>⚡ <strong>35</strong> Stamina / Run</li>
-                    <li>🔨 <strong>915</strong> Enclumes / 8h</li>
-                    <li>🏆 <strong>2x plus rentable</strong> que tout le reste</li>
-                </ul>
-            </div>
-        </div>
+            /* MEDAILLES */
+            .medal {
+                width: 40px; height: 40px; line-height: 40px; border-radius: 50%;
+                font-weight: bold; font-size: 1.2em; margin: 0 auto 10px auto;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            }
+            .gold { background: linear-gradient(45deg, #ffd700, #fdb931); color: #000; }
+            .silver { background: linear-gradient(45deg, #e0e0e0, #bdbdbd); color: #000; }
+            .bronze { background: linear-gradient(45deg, #cd7f32, #a0522d); color: #fff; }
 
-        <div class="glass-card">
-            <h3>📝 Conclusion</h3>
-            <p>Si vous cherchez des <strong>Enclumes</strong>, attendez absolument la <strong>Demi-Stamina (Half-Stam)</strong> sur les Boss de Guilde (BdG) ou les Boss de Combat.</p>
-            <p>Le <strong>Donjon Or</strong> sert uniquement à monter vos persos/équipements, mais c'est le pire moyen d'obtenir des enclumes via le recyclage.</p>
-        </div>
+            .crown { font-size: 2em; margin-bottom: -10px; animation: float 3s infinite ease-in-out; }
+
+            /* TEXTES */
+            h3 { font-size: 1.1em; margin: 10px 0; color: #fff; }
+            .stat-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin: 15px 0; }
+            .winner-box { background: rgba(0, 219, 222, 0.1); border: 1px solid rgba(0, 219, 222, 0.3); }
+            
+            .value { display: block; font-size: 1.8em; font-weight: bold; }
+            .step-1 .value { color: #00dbde; }
+            .step-2 .value { color: #f39c12; }
+            .step-3 .value { color: #e74c3c; }
+            
+            .label { font-size: 0.7em; text-transform: uppercase; letter-spacing: 1px; color: #aaa; }
+
+            .badge-winner {
+                background: linear-gradient(90deg, #00dbde, #fc00ff);
+                color: #000; font-weight: bold; font-size: 0.8em;
+                padding: 5px 10px; border-radius: 20px; display: inline-block; margin-bottom: 10px;
+            }
+
+            .gain { font-size: 1.2em; font-weight: bold; color: #fff; }
+            .gain-winner { font-size: 1.5em; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+            .sub-gain { font-size: 0.8em; color: #00dbde; }
+
+            /* GRAPHIQUE BARRES */
+            .chart-row { display: flex; align-items: center; margin-bottom: 15px; }
+            .chart-label { width: 100px; font-size: 0.9em; color: #ccc; }
+            .chart-bar { 
+                height: 30px; line-height: 30px; 
+                border-radius: 0 15px 15px 0; padding-left: 10px; 
+                color: #fff; font-weight: bold; font-size: 0.9em; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                transition: width 1s ease-out;
+            }
+        </style>
     '''
     return render_template_string(get_layout(content, "Lampa - Farming", "/farming"))
+
 
 def run_web():
     app.run(host='0.0.0.0', port=8080)
@@ -686,5 +762,6 @@ if __name__ == "__main__":
     web_thread.daemon = True
     web_thread.start()
     client.run(TOKEN)
+
 
 
