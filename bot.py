@@ -266,7 +266,7 @@ async def farm_command(interaction: discord.Interaction):
     # Bouton vers le site (le Podium visuel)
     view = View()
     # ATTENTION : Remplace l'URL ci-dessous par la VRAIE URL de ton bot Render
-    btn = Button(label="Voir le Graphique 📊", style=discord.ButtonStyle.link, url="https://ton-app-name.onrender.com/farming")
+    btn = Button(label="Voir le Graphique 📊", style=discord.ButtonStyle.link, url="https://sevends-stuff.onrender.com/farming")
     view.add_item(btn)
     
     await interaction.response.send_message(embed=embed, view=view)
@@ -762,6 +762,7 @@ if __name__ == "__main__":
     web_thread.daemon = True
     web_thread.start()
     client.run(TOKEN)
+
 
 
 
